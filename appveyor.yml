@@ -1,0 +1,10 @@
+
+configuration: Debug
+
+build:
+  project: VsixUtil.sln
+  verbosity: minimal
+
+artifacts:
+  - path: Src\bin\Debug\VsixUtil.exe
+
