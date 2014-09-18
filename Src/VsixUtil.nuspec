@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>VsixUtil</id>
+    <version>$version$</version>
+    <title>Vsix Installation Utility</title>
+    <authors>JaredPar</authors>
+    <owners>jaredpar</owners>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>https://github.com/jaredpar/VsixUtil</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Command line utility for easily and synchronously intsalling or uninstalling VSIX extensions</description>
+    <tags>vsix</tags>
+  </metadata>
+</package>
