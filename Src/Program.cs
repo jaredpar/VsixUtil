@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using Microsoft.VisualStudio.ExtensionManager;
+using Microsoft.Win32;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,6 +16,22 @@ namespace VsixUtil
         Help
     }
 
+    internal struct CommandLine
+    {
+        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, "", "");
+
+        internal readonly ToolAction ToolAction;
+        internal readonly string RootSuffix;
+        internal readonly string Arg;
+
+        internal CommandLine(ToolAction toolAction, string rootSuffix, string arg)
+        {
+            ToolAction = toolAction;
+            RootSuffix = rootSuffix;
+            Arg = arg;
+        }
+    }
+
     internal enum Version
     {
         Vs2010,
@@ -22,93 +39,9 @@ namespace VsixUtil
         Vs2013,
     }
 
-    internal static class Extensions
+    internal static class CommonUtil
     {
-        internal static LateBound AsLateBound(this object obj)
-        {
-            return new LateBound(obj);
-        }
-    }
-
-    internal sealed class LateBound
-    {
-        private readonly object _value;
-        private readonly Type _type;
-
-        internal object Value
-        {
-            get { return _value; }
-        }
-
-        internal bool IsNull
-        {
-            get { return _value == null; }
-        }
-
-        internal LateBound(object value)
-        {
-            _value = value;
-            _type = value != null ? value.GetType() : null;
-        }
-
-        internal LateBound GetProperty(string name)
-        {
-            return _type
-                .GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .GetValue(_value, null)
-                .AsLateBound();
-        }
-
-        internal T Cast<T>()
-        {
-            return (T)_value;
-        }
-
-        internal LateBound CallMethod(string name, params object[] arguments)
-        {
-            return CallMethodCore(_type, name, _value, arguments);
-        }
-
-        internal static LateBound CallStaticMethod(Type type, string name, params object[] arguments)
-        {
-            return CallMethodCore(type, name, null, arguments);
-        }
-
-        private static LateBound CallMethodCore(Type type, string name, object thisArgument, params object[] arguments)
-        {
-            try
-            {
-                var methodInfo = type
-                    .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                    .Where(x => x.Name != null && x.Name == name)
-                    .Where(x => x.GetParameters().Length == arguments.Length)
-                    .FirstOrDefault();
-
-                if (methodInfo == null)
-                {
-                    var message = String.Format("Could not find method {0}::{1}", type.Name, name);
-                    throw new Exception(message);
-                }
-
-                return methodInfo
-                    .Invoke(thisArgument, arguments)
-                    .AsLateBound();
-            }
-            catch (TargetInvocationException ex)
-            {
-                throw ex.InnerException;
-            }
-        }
-
-        public override string ToString()
-        {
-            return _value != null ? _value.ToString() : "<null>";
-        }
-    }
-
-    internal class Program
-    {
-        private static string GetVersionNumber(Version version)
+        internal static string GetVersionNumber(Version version)
         {
             switch (version)
             {
@@ -123,15 +56,217 @@ namespace VsixUtil
             }
         }
 
-        /// <summary>
-        /// Load the Microsoft.VisualStudio.ExtensionManager.Implementation assembly for the specified version
-        /// </summary>
-        /// <param name="version"></param>
-        /// <returns></returns>
+        internal static string GetAssemblyVersionNumber(Version version)
+        {
+            return string.Format("{0}.0.0.0", GetVersionNumber(version));
+        }
+
+        internal static string GetApplicationPath(Version version)
+        {
+            var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", CommonUtil.GetVersionNumber(version));
+            using (var registryKey = Registry.LocalMachine.OpenSubKey(path))
+            {
+                return (string)(registryKey.GetValue("EnvironmentPath"));
+            }
+        }
+
+        internal static bool IsVersionInstalled(Version version)
+        {
+            try
+            {
+                return GetApplicationPath(version) != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static List<Version> GetInstalledVersions()
+        {
+            return Enum
+                .GetValues(typeof(Version))
+                .Cast<Version>()
+                .Where(x => IsVersionInstalled(x))
+                .ToList();
+        }
+
+        internal static void PrintHelp()
+        {
+            Console.WriteLine("vsixutil [/install(+|-)] extensionPath [rootSuffix]");
+            Console.WriteLine("vsixutil /list");
+        }
+    }
+
+    internal sealed class CommandRunner
+    {
+        internal readonly Version _version;
+        internal readonly string _rootSuffix;
+        internal readonly IVsExtensionManager _extensionManager;
+
+        internal CommandRunner(Version version, string rootSuffix, IVsExtensionManager extensionManager)
+        {
+            _version = version;
+            _rootSuffix = rootSuffix;
+            _extensionManager = extensionManager;
+        }
+
+        internal void Run(ToolAction toolAction, string arg1)
+        {
+            switch (toolAction)
+            {
+                case ToolAction.Install:
+                    RunInstall(arg1);
+                    break;
+                case ToolAction.List:
+                    RunList();
+                    break;
+                case ToolAction.Help:
+                    RunHelp();
+                    break;
+                default:
+                    throw new Exception(string.Format("Not implemented {0}", toolAction));
+            }
+        }
+
+        private void RunInstall(string extensionPath)
+        {
+            try
+            {
+                Console.Write("{0} Install ... ", _version);
+                var installableExtension = _extensionManager.CreateInstallableExtension(extensionPath);
+                var identifier = installableExtension.Header.Identifier;
+                TryUninstall(identifier, printError: false);
+                _extensionManager.Install(installableExtension, perMachine: false);
+
+                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
+                _extensionManager.Enable(installedExtension);
+                Console.WriteLine("Succeeded");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR: {0}", ex.Message);
+            }
+        }
+
+        private bool TryUninstall(string identifier, bool printError = false)
+        {
+            try
+            {
+                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
+                if (installedExtension == null)
+                {
+                    return false;
+                }
+
+                _extensionManager.Uninstall(installedExtension);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (printError)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+
+                return false;
+            }
+        }
+
+        private void RunList()
+        {
+            Console.WriteLine(_version);
+            foreach (var extension in _extensionManager.GetInstalledExtensions())
+            {
+                var header = extension.Header;
+                Console.WriteLine("  {0} - {1}", header.Identifier, header.Name);
+            }
+        }
+
+        private static void RunHelp()
+        {
+            Console.WriteLine("vsixutil [/install(+|-)] extensionPath [rootSuffix]");
+            Console.WriteLine("vsixutil /list");
+        }
+    }
+
+    internal interface IVersionManager
+    {
+        void Run(Version version, string rootSuffix, ToolAction toolAction, string arg1);
+    }
+
+    internal sealed class VersionManager : MarshalByRefObject, IVersionManager
+    {
+        #region AssemblyRedirectory
+
+        internal sealed class AssemblyRedirector
+        {
+            internal ResolveEventHandler _resolveEventHandler;
+            internal Version _version;
+
+            internal Version Version
+            {
+                get { return _version; }
+                set { _version = value; }
+            }
+
+            internal AssemblyRedirector()
+            {
+                _version = Version.Vs2010;
+                _resolveEventHandler = ResolveAssembly;
+                AppDomain.CurrentDomain.AssemblyResolve += _resolveEventHandler;
+            }
+
+            private Assembly ResolveAssembly(object sender, ResolveEventArgs e)
+            {
+                try
+                {
+                    AppDomain.CurrentDomain.AssemblyResolve -= _resolveEventHandler;
+
+                    if (e.Name.StartsWith("Microsoft.VisualStudio.ExtensionManager,", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string qualifiedName = string.Format(
+                            "Microsoft.VisualStudio.ExtensionManager, Version={0}, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+                            CommonUtil.GetAssemblyVersionNumber(_version));
+                        return Assembly.Load(qualifiedName);
+                    }
+
+                    return null;
+
+                }
+                finally
+                {
+                    AppDomain.CurrentDomain.AssemblyResolve += _resolveEventHandler;
+                }
+            }
+        }
+
+        #endregion
+
+        private readonly AssemblyRedirector _assemblyRedirector;
+
+        public VersionManager()
+        {
+            _assemblyRedirector = new AssemblyRedirector();
+        }
+
+        public void Run(Version version, string rootSuffix, ToolAction toolAction, string arg1)
+        {
+            _assemblyRedirector.Version = version;
+            RunCore(version, rootSuffix, toolAction, arg1);
+        }
+
+        private void RunCore(Version version, string rootSuffix, ToolAction toolAction, string arg1)
+        {
+            var obj = CreateExtensionManager(version, "");
+            var commandRunner = new CommandRunner(version, rootSuffix, (IVsExtensionManager)obj);
+            commandRunner.Run(toolAction, arg1);
+        }
+
         private static Assembly LoadImplementationAssembly(Version version)
         {
             var format = "Microsoft.VisualStudio.ExtensionManager.Implementation, Version={0}.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a";
-            var strongName = string.Format(format, GetVersionNumber(version));
+            var strongName = string.Format(format, CommonUtil.GetVersionNumber(version));
             return Assembly.Load(strongName);
         }
 
@@ -154,29 +289,8 @@ namespace VsixUtil
                     throw new Exception("Bad Version");
             }
 
-            var strongName = string.Format(format, suffix, GetVersionNumber(version));
+            var strongName = string.Format(format, suffix, CommonUtil.GetVersionNumber(version));
             return Assembly.Load(strongName);
-        }
-
-        private static string GetApplicationPath(Version version)
-        {
-            var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", GetVersionNumber(version));
-            using (var registryKey = Registry.LocalMachine.OpenSubKey(path))
-            {
-                return (string)(registryKey.GetValue("EnvironmentPath"));
-            }
-        }
-
-        private static bool IsVersionInstalled(Version version)
-        {
-            try
-            {
-                return GetApplicationPath(version) != null;
-            }
-            catch
-            {
-                return false;
-            }
         }
 
         private static Type GetExtensionManagerServiceType(Version version)
@@ -185,10 +299,10 @@ namespace VsixUtil
             return assembly.GetType("Microsoft.VisualStudio.ExtensionManager.ExtensionManagerService");
         }
 
-        private static LateBound CreateExtensionManager(Version version, string rootSuffix)
+        internal static object CreateExtensionManager(Version version, string rootSuffix)
         {
             var settingsAssembly = LoadSettingsAssembly(version);
-            var applicationPath = GetApplicationPath(version);
+            var applicationPath = CommonUtil.GetApplicationPath(version);
 
             var externalSettingsManagerType = settingsAssembly.GetType("Microsoft.VisualStudio.Settings.ExternalSettingsManager");
             var settingsManager = externalSettingsManagerType
@@ -211,126 +325,99 @@ namespace VsixUtil
                 .Where(x => x.GetParameters().Length == 1 && x.GetParameters()[0].ParameterType.Name.Contains("SettingsManager"))
                 .FirstOrDefault()
                 .Invoke(new[] { settingsManager });
-            return obj.AsLateBound();
+            return obj;
         }
+    }
 
-        private static LateBound CreateInstallableExtension(string extensionPath, Version version)
+    internal class Program
+    {
+        private static CommandLine ParseCommandLine(string[] args)
         {
-            var type = GetExtensionManagerServiceType(version);
-            return LateBound.CallStaticMethod(type, "CreateInstallableExtension", extensionPath);
-        }
-
-        private static void InstallExtension(string extensionPath, string rootSuffix, Version version)
-        {
-            var extensionManager = CreateExtensionManager(version, rootSuffix);
-            var installableExtension = CreateInstallableExtension(extensionPath, version);
-            var identifier = installableExtension.GetProperty("Header").GetProperty("Identifier").Cast<string>();
-
-            try
+            if (args.Length == 0)
             {
-                var installedExtension = extensionManager.CallMethod("GetInstalledExtension", identifier);
-                try
-                {
-                    Console.Write("Uninstalling ... ");
-                    extensionManager.CallMethod("Uninstall", installedExtension.Value);
-                    Console.WriteLine();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-            }
-            catch
-            {
-                // Extension isn't installed
+                return CommandLine.Help;
             }
 
+            var toolAction = ToolAction.Help;
+            var rootSuffix = "";
+            var arg = "";
+
+            int index = 0;
+            while (index < args.Length)
+            {
+                switch (args[index].ToLower())
+                {
+                    case "/install":
+                        if (index + 1 >= args.Length)
+                        {
+                            Console.Write("/install requires an argument");
+                            return CommandLine.Help;
+                        }
+
+                        toolAction = ToolAction.Install;
+                        arg = args[index + 1];
+                        index += 2;
+                        break;
+                    case "/rootSuffix":
+                        if (index + 1 >= args.Length)
+                        {
+                            Console.Write("/rootSuffix requires an argument");
+                            return CommandLine.Help;
+                        }
+
+                        rootSuffix = args[index + 1];
+                        index += 2;
+                        break;
+                    case "/list":
+                        toolAction = ToolAction.List;
+                        index = args.Length;
+                        break;
+                    case "/help":
+                        toolAction = ToolAction.Help;
+                        index = args.Length;
+                        break;
+                    default:
+                        Console.WriteLine("{0} is not a valid argument", args[0]);
+                        return CommandLine.Help;
+                }
+            }
+
+            return new CommandLine(toolAction, rootSuffix, arg);
+        }
+
+        private static void Run(Version version, CommandLine commandLine)
+        {
+            var appDomain = AppDomain.CreateDomain(version.ToString());
             try
             {
-                Console.Write("Installing ... ");
-                extensionManager.CallMethod("Install", installableExtension.Value, false);
-
-                var installedExtension = extensionManager.CallMethod("GetInstalledExtension", identifier);
-                extensionManager.CallMethod("Enable", installedExtension.Value);
-                Console.WriteLine();
+                var versionManager = (IVersionManager)appDomain.CreateInstanceAndUnwrap(
+                    typeof(Program).Assembly.FullName,
+                    typeof(VersionManager).FullName);
+                versionManager.Run(version, commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("Error: {0}", ex.Message);
             }
-        }
-
-        private static ToolAction ParseCommandLine(string[] args)
-        {
-            if (args.Length == 0)
+            finally
             {
-                return ToolAction.Help;
-            }
-
-            switch (args[0].ToLower())
-            {
-                case "/install":
-                case "/install+":
-                    return ToolAction.Install;
-                case "/list":
-                    return ToolAction.List;
-                default:
-                    Console.WriteLine("{0} is not a valid argument", args[0]);
-                    return ToolAction.Help;
-            }
-        }
-
-        private static void RunInstall(string[] args)
-        {
-            if (args.Length == 0)
-            {
-                Console.WriteLine("Need an extension file");
-                RunHelp();
-                return;
-            }
-
-            var extensionPath = args[1];
-            var rootSuffix = args.Length >= 2 ? args[2] : "";
-            foreach (var version in Enum.GetValues(typeof(Version)).Cast<Version>().Where(x => IsVersionInstalled(x)))
-            {
-                Console.WriteLine("Visual Studio {0}.0", GetVersionNumber(version));
-                InstallExtension(extensionPath, rootSuffix, version);
-            }
-        }
-
-        private static void RunHelp()
-        {
-            Console.WriteLine("vsixutil [/install(+|-)] extensionPath [rootSuffix]");
-            Console.WriteLine("vsixutil /list");
-        }
-
-        private static void RunList()
-        {
-            foreach (var version in Enum.GetValues(typeof(Version)).Cast<Version>().Where(x => IsVersionInstalled(x)))
-            {
-                Console.WriteLine(version);
-                var extensionManager = CreateExtensionManager(version, "");
-                foreach (var extension in extensionManager.CallMethod("GetInstalledExtensions").Cast<IEnumerable>())
-                {
-                    var header = new LateBound(extension).GetProperty("Header");
-                    Console.WriteLine("  {0} - {1}", header.GetProperty("Identifier").Cast<string>(), header.GetProperty("Name").Cast<string>());
-                }
+                AppDomain.Unload(appDomain);
             }
         }
 
         internal static void Main(string[] args)
         {
-            switch (ParseCommandLine(args))
+            var commandLine = ParseCommandLine(args);
+            if (commandLine.ToolAction == ToolAction.Help)
             {
-                case ToolAction.Help:
-                    RunHelp();
-                    break;
-                case ToolAction.Install:
-                    RunInstall(args);
-                    break;
-                case ToolAction.List:
-                    RunList();
-                    break;
+                CommonUtil.PrintHelp();
+                Environment.Exit(1);
+                return;
+            }
+
+            foreach (var version in CommonUtil.GetInstalledVersions())
+            {
+                Run(version, commandLine);
             }
         }
     }
