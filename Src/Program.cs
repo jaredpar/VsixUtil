@@ -7,14 +7,14 @@ using System.Text;
 
 namespace VsixUtil
 {
-    enum Version
+    internal enum Version
     {
         Vs2010,
         Vs2012,
         Vs2013,
     }
 
-    static class Extensions
+    internal static class Extensions
     {
         internal static LateBound AsLateBound(this object obj)
         {
@@ -22,7 +22,7 @@ namespace VsixUtil
         }
     }
 
-    sealed class LateBound
+    internal sealed class LateBound
     {
         private readonly object _value;
         private readonly Type _type;
@@ -98,7 +98,7 @@ namespace VsixUtil
         }
     }
 
-    class Program
+    internal class Program
     {
         private static string GetVersionNumber(Version version)
         {
@@ -252,7 +252,7 @@ namespace VsixUtil
             }
         }
 
-        static void Main(string[] args)
+        internal static void Main(string[] args)
         {
             if (args.Length == 0)
             {
@@ -269,7 +269,7 @@ namespace VsixUtil
             }
         }
 
-        static void PrintHelp()
+        internal static void PrintHelp()
         {
             Console.WriteLine("vsixutil extensionPath [rootSuffix]");
         }
