@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -7,6 +8,13 @@ using System.Text;
 
 namespace VsixUtil
 {
+    internal enum ToolAction
+    {
+        Install,
+        List,
+        Help
+    }
+
     internal enum Version
     {
         Vs2010,
@@ -252,16 +260,37 @@ namespace VsixUtil
             }
         }
 
-        internal static void Main(string[] args)
+        private static ToolAction ParseCommandLine(string[] args)
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("vsixutil extensionPath [rootSuffix]");
+                return ToolAction.Help;
+            }
+
+            switch (args[0].ToLower())
+            {
+                case "/install":
+                case "/install+":
+                    return ToolAction.Install;
+                case "/list":
+                    return ToolAction.List;
+                default:
+                    Console.WriteLine("{0} is not a valid argument", args[0]);
+                    return ToolAction.Help;
+            }
+        }
+
+        private static void RunInstall(string[] args)
+        {
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Need an extension file");
+                RunHelp();
                 return;
             }
 
-            var extensionPath = args[0];
-            var rootSuffix = args.Length == 2 ? args[1] : "";
+            var extensionPath = args[1];
+            var rootSuffix = args.Length >= 2 ? args[2] : "";
             foreach (var version in Enum.GetValues(typeof(Version)).Cast<Version>().Where(x => IsVersionInstalled(x)))
             {
                 Console.WriteLine("Visual Studio {0}.0", GetVersionNumber(version));
@@ -269,9 +298,40 @@ namespace VsixUtil
             }
         }
 
-        internal static void PrintHelp()
+        private static void RunHelp()
         {
-            Console.WriteLine("vsixutil extensionPath [rootSuffix]");
+            Console.WriteLine("vsixutil [/install(+|-)] extensionPath [rootSuffix]");
+            Console.WriteLine("vsixutil /list");
+        }
+
+        private static void RunList()
+        {
+            foreach (var version in Enum.GetValues(typeof(Version)).Cast<Version>().Where(x => IsVersionInstalled(x)))
+            {
+                Console.WriteLine(version);
+                var extensionManager = CreateExtensionManager(version, "");
+                foreach (var extension in extensionManager.CallMethod("GetInstalledExtensions").Cast<IEnumerable>())
+                {
+                    var header = new LateBound(extension).GetProperty("Header");
+                    Console.WriteLine("  {0} - {1}", header.GetProperty("Identifier").Cast<string>(), header.GetProperty("Name").Cast<string>());
+                }
+            }
+        }
+
+        internal static void Main(string[] args)
+        {
+            switch (ParseCommandLine(args))
+            {
+                case ToolAction.Help:
+                    RunHelp();
+                    break;
+                case ToolAction.Install:
+                    RunInstall(args);
+                    break;
+                case ToolAction.List:
+                    RunList();
+                    break;
+            }
         }
     }
 }
