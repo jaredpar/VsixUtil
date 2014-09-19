@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace VsixUtil
 {
@@ -114,15 +115,15 @@ namespace VsixUtil
             _extensionManager = extensionManager;
         }
 
-        internal void Run(ToolAction toolAction, string arg1)
+        internal void Run(ToolAction toolAction, string arg)
         {
             switch (toolAction)
             {
                 case ToolAction.Install:
-                    RunInstall(arg1);
+                    RunInstall(arg);
                     break;
                 case ToolAction.List:
-                    RunList();
+                    RunList(arg);
                     break;
                 case ToolAction.Help:
                     RunHelp();
@@ -176,26 +177,40 @@ namespace VsixUtil
             }
         }
 
-        private void RunList()
+        private void RunList(string filter)
         {
             Console.WriteLine(_version);
+            Console.WriteLine("  {0, -40} - {1}", "Name", "Identifier");
+
+            var regex = filter != null
+                ? new Regex(filter, RegexOptions.IgnoreCase)
+                : null;
+
             foreach (var extension in _extensionManager.GetInstalledExtensions())
             {
                 var header = extension.Header;
-                Console.WriteLine("  {0} - {1}", header.Identifier, header.Name);
+                if (regex == null || regex.IsMatch(header.Name))
+                {
+                    var formattedName = header.Name.Replace(Environment.NewLine, " ");
+                    if (formattedName.Length > 35)
+                    {
+                        formattedName = formattedName.Substring(0, 35) + " ...";
+                    }
+                    Console.WriteLine("  {0,-40} - {1}", formattedName, header.Identifier);
+                }
             }
         }
 
         private static void RunHelp()
         {
-            Console.WriteLine("vsixutil [/install(+|-)] extensionPath [rootSuffix]");
-            Console.WriteLine("vsixutil /list");
+            Console.WriteLine("vsixutil [/rootSuffix name] /install extensionPath");
+            Console.WriteLine("vsixutil [/rootSuffix name] /list [filter]");
         }
     }
 
     internal interface IVersionManager
     {
-        void Run(Version version, string rootSuffix, ToolAction toolAction, string arg1);
+        void Run(Version version, string rootSuffix, ToolAction toolAction, string arg);
     }
 
     internal sealed class VersionManager : MarshalByRefObject, IVersionManager
@@ -376,6 +391,11 @@ namespace VsixUtil
                         break;
                     case "/list":
                         toolAction = ToolAction.List;
+                        if (index + 1 < args.Length)
+                        {
+                            arg = args[index + 1];
+                        }
+
                         index = args.Length;
                         break;
                     case "/help":
