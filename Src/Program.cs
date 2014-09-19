@@ -3,6 +3,8 @@ using Microsoft.Win32;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -13,6 +15,7 @@ namespace VsixUtil
     internal enum ToolAction
     {
         Install,
+        Uninstall,
         List,
         Help
     }
@@ -97,8 +100,9 @@ namespace VsixUtil
 
         internal static void PrintHelp()
         {
-            Console.WriteLine("vsixutil [/install(+|-)] extensionPath [rootSuffix]");
-            Console.WriteLine("vsixutil /list");
+            Console.WriteLine("vsixutil [/rootSuffix name] /install extensionPath");
+            Console.WriteLine("vsixutil [/rootSuffix name] /uninstall identifier");
+            Console.WriteLine("vsixutil /list [filter]");
         }
     }
 
@@ -122,6 +126,9 @@ namespace VsixUtil
                 case ToolAction.Install:
                     RunInstall(arg);
                     break;
+                case ToolAction.Uninstall:
+                    RunUninstall(arg);
+                    break;
                 case ToolAction.List:
                     RunList(arg);
                     break;
@@ -140,7 +147,7 @@ namespace VsixUtil
                 Console.Write("{0} Install ... ", _version);
                 var installableExtension = _extensionManager.CreateInstallableExtension(extensionPath);
                 var identifier = installableExtension.Header.Identifier;
-                TryUninstall(identifier, printError: false);
+                UninstallSilent(identifier);
                 _extensionManager.Install(installableExtension, perMachine: false);
 
                 var installedExtension = _extensionManager.GetInstalledExtension(identifier);
@@ -153,27 +160,38 @@ namespace VsixUtil
             }
         }
 
-        private bool TryUninstall(string identifier, bool printError = false)
+        private void RunUninstall(string identifier)
+        {
+            try
+            {
+                Console.Write("{0} Uninstall ... ", _version);
+                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
+                if (installedExtension != null)
+                {
+                    _extensionManager.Uninstall(installedExtension);
+                }
+
+                Console.WriteLine("Succeeded");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR: {0}", ex.Message);
+            }
+        }
+
+        private void UninstallSilent(string identifier, bool printError = false)
         {
             try
             {
                 var installedExtension = _extensionManager.GetInstalledExtension(identifier);
-                if (installedExtension == null)
+                if (installedExtension != null)
                 {
-                    return false;
+                    _extensionManager.Uninstall(installedExtension);
                 }
-
-                _extensionManager.Uninstall(installedExtension);
-                return true;
             }
-            catch (Exception ex)
+            catch 
             {
-                if (printError)
-                {
-                    Console.WriteLine(ex.Message);
-                }
 
-                return false;
             }
         }
 
@@ -215,66 +233,12 @@ namespace VsixUtil
 
     internal sealed class VersionManager : MarshalByRefObject, IVersionManager
     {
-        #region AssemblyRedirectory
-
-        internal sealed class AssemblyRedirector
-        {
-            internal ResolveEventHandler _resolveEventHandler;
-            internal Version _version;
-
-            internal Version Version
-            {
-                get { return _version; }
-                set { _version = value; }
-            }
-
-            internal AssemblyRedirector()
-            {
-                _version = Version.Vs2010;
-                _resolveEventHandler = ResolveAssembly;
-                AppDomain.CurrentDomain.AssemblyResolve += _resolveEventHandler;
-            }
-
-            private Assembly ResolveAssembly(object sender, ResolveEventArgs e)
-            {
-                try
-                {
-                    AppDomain.CurrentDomain.AssemblyResolve -= _resolveEventHandler;
-
-                    if (e.Name.StartsWith("Microsoft.VisualStudio.ExtensionManager,", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string qualifiedName = string.Format(
-                            "Microsoft.VisualStudio.ExtensionManager, Version={0}, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-                            CommonUtil.GetAssemblyVersionNumber(_version));
-                        return Assembly.Load(qualifiedName);
-                    }
-
-                    return null;
-
-                }
-                finally
-                {
-                    AppDomain.CurrentDomain.AssemblyResolve += _resolveEventHandler;
-                }
-            }
-        }
-
-        #endregion
-
-        private readonly AssemblyRedirector _assemblyRedirector;
-
         public VersionManager()
         {
-            _assemblyRedirector = new AssemblyRedirector();
+
         }
 
         public void Run(Version version, string rootSuffix, ToolAction toolAction, string arg1)
-        {
-            _assemblyRedirector.Version = version;
-            RunCore(version, rootSuffix, toolAction, arg1);
-        }
-
-        private void RunCore(Version version, string rootSuffix, ToolAction toolAction, string arg1)
         {
             var obj = CreateExtensionManager(version, "");
             var commandRunner = new CommandRunner(version, rootSuffix, (IVsExtensionManager)obj);
@@ -368,6 +332,7 @@ namespace VsixUtil
             {
                 switch (args[index].ToLower())
                 {
+                    case "/i":
                     case "/install":
                         if (index + 1 >= args.Length)
                         {
@@ -379,6 +344,19 @@ namespace VsixUtil
                         arg = args[index + 1];
                         index += 2;
                         break;
+                    case "/u":
+                    case "/uninstall":
+                        if (index + 1 >= args.Length)
+                        {
+                            Console.Write("/uninstall requires an argument");
+                            return CommandLine.Help;
+                        }
+
+                        toolAction = ToolAction.Uninstall;
+                        arg = args[index + 1];
+                        index += 2;
+                        break;
+                    case "/r":
                     case "/rootSuffix":
                         if (index + 1 >= args.Length)
                         {
@@ -389,6 +367,7 @@ namespace VsixUtil
                         rootSuffix = args[index + 1];
                         index += 2;
                         break;
+                    case "/l":
                     case "/list":
                         toolAction = ToolAction.List;
                         if (index + 1 < args.Length)
@@ -411,9 +390,35 @@ namespace VsixUtil
             return new CommandLine(toolAction, rootSuffix, arg);
         }
 
+        private static string GenerateConfigFileContents(Version version)
+        {
+            Debug.Assert(version != Version.Vs2010);
+            const string contentFormat = @"
+<configuration>
+  <runtime>
+    <assemblyBinding xmlns=""urn:schemas-microsoft-com:asm.v1"">
+      <dependentAssembly>
+        <assemblyIdentity name=""Microsoft.VisualStudio.ExtensionManager"" publicKeyToken=""b03f5f7f11d50a3a"" culture=""neutral"" />
+        <bindingRedirect oldVersion=""10.0.0.0-{0}"" newVersion=""{0}"" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>
+";
+            return string.Format(contentFormat, CommonUtil.GetAssemblyVersionNumber(version));
+        }
+
         private static void Run(Version version, CommandLine commandLine)
         {
-            var appDomain = AppDomain.CreateDomain(version.ToString());
+            AppDomainSetup appDomainSetup = null;
+            if (version != Version.Vs2010)
+            {
+                var configFile = Path.GetTempFileName();
+                File.WriteAllText(configFile, GenerateConfigFileContents(version));
+                appDomainSetup = new AppDomainSetup();
+                appDomainSetup.ConfigurationFile = configFile;
+            }
+            var appDomain = AppDomain.CreateDomain(version.ToString(), securityInfo: null, info: appDomainSetup);
             try
             {
                 var versionManager = (IVersionManager)appDomain.CreateInstanceAndUnwrap(
