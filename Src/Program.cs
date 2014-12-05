@@ -133,7 +133,7 @@ namespace VsixUtil
                     RunList(arg);
                     break;
                 case ToolAction.Help:
-                    RunHelp();
+                    CommonUtil.PrintHelp();
                     break;
                 default:
                     throw new Exception(string.Format("Not implemented {0}", toolAction));
@@ -217,12 +217,6 @@ namespace VsixUtil
                     Console.WriteLine("  {0,-40} - {1}", formattedName, header.Identifier);
                 }
             }
-        }
-
-        private static void RunHelp()
-        {
-            Console.WriteLine("vsixutil [/rootSuffix name] /install extensionPath");
-            Console.WriteLine("vsixutil [/rootSuffix name] /list [filter]");
         }
     }
 
@@ -357,7 +351,7 @@ namespace VsixUtil
                         index += 2;
                         break;
                     case "/r":
-                    case "/rootSuffix":
+                    case "/rootsuffix":
                         if (index + 1 >= args.Length)
                         {
                             Console.Write("/rootSuffix requires an argument");
@@ -382,7 +376,7 @@ namespace VsixUtil
                         index = args.Length;
                         break;
                     default:
-                        Console.WriteLine("{0} is not a valid argument", args[0]);
+                        Console.WriteLine("{0} is not a valid argument", args[index]);
                         return CommandLine.Help;
                 }
             }
