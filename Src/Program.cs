@@ -234,7 +234,7 @@ namespace VsixUtil
 
         public void Run(Version version, string rootSuffix, ToolAction toolAction, string arg1)
         {
-            var obj = CreateExtensionManager(version, "");
+            var obj = CreateExtensionManager(version, rootSuffix);
             var commandRunner = new CommandRunner(version, rootSuffix, (IVsExtensionManager)obj);
             commandRunner.Run(toolAction, arg1);
         }
