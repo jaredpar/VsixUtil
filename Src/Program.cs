@@ -41,7 +41,7 @@ namespace VsixUtil
         Vs2010,
         Vs2012,
         Vs2013,
-        VsDev14
+        Vs2015
     }
 
     internal static class CommonUtil
@@ -56,7 +56,7 @@ namespace VsixUtil
                     return "11";
                 case Version.Vs2013:
                     return "12";
-                case Version.VsDev14:
+                case Version.Vs2015:
                     return "14";
                 default:
                     throw new Exception("Bad Version");
@@ -261,7 +261,7 @@ namespace VsixUtil
                 case Version.Vs2013:
                     suffix = ".12.0";
                     break;
-                case Version.VsDev14:
+                case Version.Vs2015:
                     suffix = ".14.0";
                     break;
                 default:
