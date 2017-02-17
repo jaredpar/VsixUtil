@@ -208,7 +208,7 @@ namespace VsixUtil
         {
             var header = extension.Header;
             var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-            var allUsersProperty = header.GetType().GetProperty(nameof(header.AllUsers), flags);
+            var allUsersProperty = header.GetType().GetProperty("AllUsers", flags);
             allUsersProperty.SetValue(header, allUsers, null);
         }
 
