@@ -184,7 +184,15 @@ namespace VsixUtil
                 var installableExtension = _extensionManager.CreateInstallableExtension(extensionPath);
                 var identifier = installableExtension.Header.Identifier;
                 UninstallSilent(identifier);
-                _extensionManager.Install(installableExtension, perMachine: false);
+
+                var perMachine = false;
+                if(installableExtension.Header.AllUsers != perMachine)
+                {
+                    Console.Write(string.Format("Changing `AllUsers` to {0} ... ", perMachine));
+                    SetAllUsers(installableExtension, perMachine);
+                }
+                SetAllUsers(installableExtension, perMachine);
+                _extensionManager.Install(installableExtension, perMachine);
 
                 var installedExtension = _extensionManager.GetInstalledExtension(identifier);
                 _extensionManager.Enable(installedExtension);
@@ -194,6 +202,14 @@ namespace VsixUtil
             {
                 Console.WriteLine("ERROR: {0}", ex.Message);
             }
+        }
+
+        private static void SetAllUsers(IInstallableExtension extension, bool allUsers)
+        {
+            var header = extension.Header;
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            var allUsersProperty = header.GetType().GetProperty(nameof(header.AllUsers), flags);
+            allUsersProperty.SetValue(header, allUsers, null);
         }
 
         private void RunUninstall(string identifier)
