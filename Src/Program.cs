@@ -87,7 +87,12 @@ namespace VsixUtil
             var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", CommonUtil.GetVersionNumber(version));
             using (var registryKey = Registry.LocalMachine.OpenSubKey(path))
             {
-                return (string)(registryKey?.GetValue("EnvironmentPath"));
+                if(registryKey == null)
+                {
+                    return null;
+                }
+
+                return (string)(registryKey.GetValue("EnvironmentPath"));
             }
         }
 
