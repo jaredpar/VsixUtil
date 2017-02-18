@@ -1,13 +1,11 @@
 ﻿using Microsoft.VisualStudio.ExtensionManager;
 using Microsoft.Win32;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace VsixUtil
@@ -22,15 +20,17 @@ namespace VsixUtil
 
     internal struct CommandLine
     {
-        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, "", "");
+        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, null, "", "");
 
         internal readonly ToolAction ToolAction;
         internal readonly string RootSuffix;
+        internal readonly string[] SkuPreference;
         internal readonly string Arg;
 
-        internal CommandLine(ToolAction toolAction, string rootSuffix, string arg)
+        internal CommandLine(ToolAction toolAction, string[] skuPreference, string rootSuffix, string arg)
         {
             ToolAction = toolAction;
+            SkuPreference = skuPreference;
             RootSuffix = rootSuffix;
             Arg = arg;
         }
@@ -41,7 +41,8 @@ namespace VsixUtil
         Vs2010,
         Vs2012,
         Vs2013,
-        Vs2015
+        Vs2015,
+        Vs2017
     }
 
     internal static class CommonUtil
@@ -58,6 +59,8 @@ namespace VsixUtil
                     return "12";
                 case Version.Vs2015:
                     return "14";
+                case Version.Vs2017:
+                    return "15";
                 default:
                     throw new Exception("Bad Version");
             }
@@ -68,20 +71,53 @@ namespace VsixUtil
             return string.Format("{0}.0.0.0", GetVersionNumber(version));
         }
 
-        internal static string GetApplicationPath(Version version)
+        internal static string GetApplicationPath(Version version, string[] skuPreference)
+        {
+            switch (version)
+            {
+                case Version.Vs2017:
+                    return GetApplicationPathVs2017(skuPreference);
+                default:
+                    return GetApplicationPathFromRegistry(version);
+            }
+        }
+
+        private static string GetApplicationPathFromRegistry(Version version)
         {
             var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", CommonUtil.GetVersionNumber(version));
             using (var registryKey = Registry.LocalMachine.OpenSubKey(path))
             {
+                if(registryKey == null)
+                {
+                    return null;
+                }
+
                 return (string)(registryKey.GetValue("EnvironmentPath"));
             }
         }
 
-        internal static bool IsVersionInstalled(Version version)
+        // NOTE: Assumes VS2017 has been installed at default location.
+        // Returns first SKU that it finds (e.g. Community, Professional or Enterprise).
+        private static string GetApplicationPathVs2017(string[] skuPreference)
+        {
+            foreach (var sku in skuPreference)
+            {
+                var path = string.Format(@"%ProgramFiles(x86)%\Microsoft Visual Studio\2017\{0}\Common7\IDE\devenv.exe", sku);
+                path = Environment.ExpandEnvironmentVariables(path);
+                if (File.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            return null;
+        }
+
+        internal static bool IsVersionInstalled(Version version, string[] skuPreference)
         {
             try
             {
-                return GetApplicationPath(version) != null;
+                return GetApplicationPath(version,  skuPreference) != null;
             }
             catch
             {
@@ -89,19 +125,19 @@ namespace VsixUtil
             }
         }
 
-        internal static List<Version> GetInstalledVersions()
+        internal static List<Version> GetInstalledVersions(string[] skuPreference)
         {
             return Enum
                 .GetValues(typeof(Version))
                 .Cast<Version>()
-                .Where(x => IsVersionInstalled(x))
+                .Where(x => IsVersionInstalled(x, skuPreference))
                 .ToList();
         }
 
         internal static void PrintHelp()
         {
-            Console.WriteLine("vsixutil [/rootSuffix name] /install extensionPath");
-            Console.WriteLine("vsixutil [/rootSuffix name] /uninstall identifier");
+            Console.WriteLine("vsixutil [/rootSuffix name] [/sku name] /install extensionPath");
+            Console.WriteLine("vsixutil [/rootSuffix name] [/sku name] /uninstall identifier");
             Console.WriteLine("vsixutil /list [filter]");
         }
     }
@@ -222,19 +258,29 @@ namespace VsixUtil
 
     internal interface IVersionManager
     {
-        void Run(Version version, string rootSuffix, ToolAction toolAction, string arg);
+        void Run(Version version, string[] skuPreference, string rootSuffix, ToolAction toolAction, string arg);
     }
 
     internal sealed class VersionManager : MarshalByRefObject, IVersionManager
     {
         public VersionManager()
         {
-
         }
 
-        public void Run(Version version, string rootSuffix, ToolAction toolAction, string arg1)
+        public void Run(Version version, string[] skuPreference, string rootSuffix, ToolAction toolAction, string arg1)
         {
-            var obj = CreateExtensionManager(version, rootSuffix);
+            var appPath = CommonUtil.GetApplicationPath(version, skuPreference);
+            var appDir = Path.GetDirectoryName(appPath);
+            var probingPaths = ".;PrivateAssemblies;PublicAssemblies";
+            using (new ProbingPathResolver(appDir, probingPaths.Split(';')))
+            {
+                PrivateRun(version, skuPreference, rootSuffix, toolAction, arg1);
+            }
+        }
+
+        private static void PrivateRun(Version version, string[] skuPreference, string rootSuffix, ToolAction toolAction, string arg1)
+        {
+            var obj = CreateExtensionManager(version, skuPreference, rootSuffix);
             var commandRunner = new CommandRunner(version, rootSuffix, (IVsExtensionManager)obj);
             commandRunner.Run(toolAction, arg1);
         }
@@ -264,6 +310,9 @@ namespace VsixUtil
                 case Version.Vs2015:
                     suffix = ".14.0";
                     break;
+                case Version.Vs2017:
+                    suffix = ".15.0";
+                    break;
                 default:
                     throw new Exception("Bad Version");
             }
@@ -278,10 +327,10 @@ namespace VsixUtil
             return assembly.GetType("Microsoft.VisualStudio.ExtensionManager.ExtensionManagerService");
         }
 
-        internal static object CreateExtensionManager(Version version, string rootSuffix)
+        internal static object CreateExtensionManager(Version version, string[] skuPreference, string rootSuffix)
         {
             var settingsAssembly = LoadSettingsAssembly(version);
-            var applicationPath = CommonUtil.GetApplicationPath(version);
+            var applicationPath = CommonUtil.GetApplicationPath(version, skuPreference);
 
             var externalSettingsManagerType = settingsAssembly.GetType("Microsoft.VisualStudio.Settings.ExternalSettingsManager");
             var settingsManager = externalSettingsManagerType
@@ -308,6 +357,39 @@ namespace VsixUtil
         }
     }
 
+    internal class ProbingPathResolver : IDisposable
+    {
+        private readonly string Dir;
+        private readonly string[] ProbePaths;
+
+        internal ProbingPathResolver(string dir, string[] probePaths)
+        {
+            Dir = dir;
+            ProbePaths = probePaths;
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+        }
+
+        public void Dispose()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve -= CurrentDomain_AssemblyResolve;
+        }
+
+        private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            var assemblyName = new AssemblyName(args.Name);
+            foreach (var probePath in ProbePaths)
+            {
+                var path = Path.Combine(Dir, probePath, assemblyName.Name + ".dll");
+                if (File.Exists(path))
+                {
+                    return Assembly.LoadFrom(path);
+                }
+            }
+
+            return null;
+        }
+    }
+
     internal class Program
     {
         private static CommandLine ParseCommandLine(string[] args)
@@ -319,6 +401,7 @@ namespace VsixUtil
 
             var toolAction = ToolAction.Help;
             var rootSuffix = "";
+            var sku = "Community;Professional;Enterprise";
             var arg = "";
 
             int index = 0;
@@ -348,6 +431,17 @@ namespace VsixUtil
 
                         toolAction = ToolAction.Uninstall;
                         arg = args[index + 1];
+                        index += 2;
+                        break;
+                    case "/s":
+                    case "/sku":
+                        if (index + 1 >= args.Length)
+                        {
+                            Console.Write("/sku requires an argument");
+                            return CommandLine.Help;
+                        }
+
+                        sku = args[index + 1];
                         index += 2;
                         break;
                     case "/r":
@@ -381,7 +475,8 @@ namespace VsixUtil
                 }
             }
 
-            return new CommandLine(toolAction, rootSuffix, arg);
+            var skuPreference = sku.Split(';');
+            return new CommandLine(toolAction, skuPreference, rootSuffix, arg);
         }
 
         private static string GenerateConfigFileContents(Version version)
@@ -415,10 +510,10 @@ namespace VsixUtil
             var appDomain = AppDomain.CreateDomain(version.ToString(), securityInfo: null, info: appDomainSetup);
             try
             {
-                var versionManager = (IVersionManager)appDomain.CreateInstanceAndUnwrap(
-                    typeof(Program).Assembly.FullName,
+                var versionManager = (IVersionManager)appDomain.CreateInstanceFromAndUnwrap(
+                    typeof(Program).Assembly.Location,
                     typeof(VersionManager).FullName);
-                versionManager.Run(version, commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
+                versionManager.Run(version, commandLine.SkuPreference, commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
             }
             catch (Exception ex)
             {
@@ -440,7 +535,7 @@ namespace VsixUtil
                 return;
             }
 
-            foreach (var version in CommonUtil.GetInstalledVersions())
+            foreach (var version in CommonUtil.GetInstalledVersions(commandLine.SkuPreference))
             {
                 Run(version, commandLine);
             }
