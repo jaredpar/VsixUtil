@@ -136,8 +136,8 @@ namespace VsixUtil
 
         internal static void PrintHelp()
         {
-            Console.WriteLine("vsixutil [/rootSuffix name] [/sku name] /install extensionPath");
-            Console.WriteLine("vsixutil [/rootSuffix name] [/sku name] /uninstall identifier");
+            Console.WriteLine("vsixutil [/install] extensionPath [/rootSuffix name] [/sku name]");
+            Console.WriteLine("vsixutil /uninstall identifier [/rootSuffix name] [/sku name]");
             Console.WriteLine("vsixutil /list [filter]");
         }
     }
@@ -470,8 +470,17 @@ namespace VsixUtil
                         index = args.Length;
                         break;
                     default:
-                        Console.WriteLine("{0} is not a valid argument", args[index]);
-                        return CommandLine.Help;
+                        arg = args[index];
+                        if (!File.Exists(arg))
+                        {
+                            Console.WriteLine("{0} is not a valid argument", arg);
+                            return CommandLine.Help;
+                        }
+
+                        // Default to Install if `arg` file exists.
+                        toolAction = ToolAction.Install;
+                        index += 1;
+                        break;
                 }
             }
 
