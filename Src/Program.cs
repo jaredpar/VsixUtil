@@ -186,12 +186,12 @@ namespace VsixUtil
                 UninstallSilent(identifier);
 
                 var perMachine = false;
-                if(installableExtension.Header.AllUsers != perMachine)
+                if (installableExtension.Header.AllUsers != perMachine)
                 {
                     Console.Write(string.Format("Changing `AllUsers` to {0} ... ", perMachine));
                     SetAllUsers(installableExtension, perMachine);
                 }
-                SetAllUsers(installableExtension, perMachine);
+
                 _extensionManager.Install(installableExtension, perMachine);
 
                 var installedExtension = _extensionManager.GetInstalledExtension(identifier);
