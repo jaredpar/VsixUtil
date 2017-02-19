@@ -20,16 +20,18 @@ namespace VsixUtil
 
     internal struct CommandLine
     {
-        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, null, "", "");
+        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, null, null, "", "");
 
         internal readonly ToolAction ToolAction;
         internal readonly string RootSuffix;
+        internal readonly string Version;
         internal readonly string[] SkuPreference;
         internal readonly string Arg;
 
-        internal CommandLine(ToolAction toolAction, string[] skuPreference, string rootSuffix, string arg)
+        internal CommandLine(ToolAction toolAction, string version, string[] skuPreference, string rootSuffix, string arg)
         {
             ToolAction = toolAction;
+            Version = version;
             SkuPreference = skuPreference;
             RootSuffix = rootSuffix;
             Arg = arg;
@@ -136,8 +138,8 @@ namespace VsixUtil
 
         internal static void PrintHelp()
         {
-            Console.WriteLine("vsixutil [/install] extensionPath [/rootSuffix name] [/sku name]");
-            Console.WriteLine("vsixutil /uninstall identifier [/rootSuffix name] [/sku name]");
+            Console.WriteLine("vsixutil [/install] extensionPath [/version number] [/sku name] [/rootSuffix name]");
+            Console.WriteLine("vsixutil /uninstall identifier [/version number] [/sku name] [/rootSuffix name]");
             Console.WriteLine("vsixutil /list [filter]");
         }
     }
@@ -400,8 +402,9 @@ namespace VsixUtil
             }
 
             var toolAction = ToolAction.Help;
-            var rootSuffix = "";
+            var version = "";
             var sku = "Community;Professional;Enterprise";
+            var rootSuffix = "";
             var arg = "";
 
             int index = 0;
@@ -431,6 +434,17 @@ namespace VsixUtil
 
                         toolAction = ToolAction.Uninstall;
                         arg = args[index + 1];
+                        index += 2;
+                        break;
+                    case "/v":
+                    case "/version":
+                        if (index + 1 >= args.Length)
+                        {
+                            Console.Write("/version requires an argument");
+                            return CommandLine.Help;
+                        }
+
+                        version = args[index + 1];
                         index += 2;
                         break;
                     case "/s":
@@ -485,7 +499,7 @@ namespace VsixUtil
             }
 
             var skuPreference = sku.Split(';');
-            return new CommandLine(toolAction, skuPreference, rootSuffix, arg);
+            return new CommandLine(toolAction, version, skuPreference, rootSuffix, arg);
         }
 
         private static string GenerateConfigFileContents(Version version)
@@ -546,8 +560,22 @@ namespace VsixUtil
 
             foreach (var version in CommonUtil.GetInstalledVersions(commandLine.SkuPreference))
             {
-                Run(version, commandLine);
+                if(IncludeVersion(commandLine.Version, version))
+                {
+                    Run(version, commandLine);
+                }
             }
+        }
+
+        private static bool IncludeVersion(string number, Version version)
+        {
+            if(string.IsNullOrEmpty(number))
+            {
+                return true;
+            }
+
+            var versionNumber = CommonUtil.GetVersionNumber(version);
+            return number == versionNumber;
         }
     }
 }
