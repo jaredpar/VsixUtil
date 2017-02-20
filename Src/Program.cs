@@ -87,7 +87,7 @@ namespace VsixUtil
             var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", CommonUtil.GetVersionNumber(version));
             using (var registryKey = Registry.LocalMachine.OpenSubKey(path))
             {
-                if(registryKey == null)
+                if (registryKey == null)
                 {
                     return null;
                 }
@@ -117,7 +117,7 @@ namespace VsixUtil
         {
             try
             {
-                return GetApplicationPath(version,  skuPreference) != null;
+                return GetApplicationPath(version, skuPreference) != null;
             }
             catch
             {
@@ -184,7 +184,22 @@ namespace VsixUtil
                 var installableExtension = _extensionManager.CreateInstallableExtension(extensionPath);
                 var identifier = installableExtension.Header.Identifier;
                 UninstallSilent(identifier);
-                _extensionManager.Install(installableExtension, perMachine: false);
+
+                var perMachine = false;
+                var header = installableExtension.Header;
+                if (header.AllUsers != perMachine)
+                {
+                    if (SetAllUsers(header, perMachine))
+                    {
+                        Console.Write(string.Format("NOTE: Changing `AllUsers` to {0} ... ", perMachine));
+                    }
+                    else
+                    {
+                        Console.Write(string.Format("WARNING: Couldn't change `AllUsers` to {0} ... ", perMachine));
+                    }
+                }
+
+                _extensionManager.Install(installableExtension, perMachine);
 
                 var installedExtension = _extensionManager.GetInstalledExtension(identifier);
                 _extensionManager.Enable(installedExtension);
@@ -194,6 +209,19 @@ namespace VsixUtil
             {
                 Console.WriteLine("ERROR: {0}", ex.Message);
             }
+        }
+
+        private static bool SetAllUsers(IExtensionHeader header, bool allUsers)
+        {
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            var allUsersProperty = header.GetType().GetProperty("AllUsers", flags);
+            if (allUsersProperty == null || !allUsersProperty.CanWrite)
+            {
+                return false;
+            }
+
+            allUsersProperty.SetValue(header, allUsers, null);
+            return true;
         }
 
         private void RunUninstall(string identifier)
@@ -225,7 +253,7 @@ namespace VsixUtil
                     _extensionManager.Uninstall(installedExtension);
                 }
             }
-            catch 
+            catch
             {
 
             }
@@ -337,13 +365,13 @@ namespace VsixUtil
                 .GetMethods()
                 .Where(x => x.Name == "CreateForApplication")
                 .Where(x =>
-                    {
-                        var parameters = x.GetParameters();
-                        return
-                            parameters.Length == 2 &&
-                            parameters[0].ParameterType == typeof(string) &&
-                            parameters[1].ParameterType == typeof(string);
-                    })
+                {
+                    var parameters = x.GetParameters();
+                    return
+                        parameters.Length == 2 &&
+                        parameters[0].ParameterType == typeof(string) &&
+                        parameters[1].ParameterType == typeof(string);
+                })
                 .FirstOrDefault()
                 .Invoke(null, new[] { applicationPath, rootSuffix });
 
