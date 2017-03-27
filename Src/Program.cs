@@ -128,7 +128,8 @@ namespace VsixUtil
 
             var searchPaths = new []
             {
-                $"%ProgramFiles(x86)%\\Microsoft Visual Studio\\{version}\\{sku}\\Common7\\IDE\\devenv.exe"
+                $"%ProgramFiles(x86)%\\Microsoft Visual Studio\\{version}\\{sku}\\Common7\\IDE\\devenv.exe",
+                $"%ProgramFiles(x86)%\\Microsoft Visual Studio\\{sku}\\Common7\\IDE\\devenv.exe"
             };
 
             foreach(var path in searchPaths)
@@ -186,15 +187,6 @@ namespace VsixUtil
             var versionNumber = GetVersionNumber(version);
             return number == versionNumber;
         }
-
-        //internal static List<Version> GetInstalledVersions(string sku)
-        //{
-        //    return Enum
-        //        .GetValues(typeof(Version))
-        //        .Cast<Version>()
-        //        .Where(x => IsVersionInstalled(x, sku))
-        //        .ToList();
-        //}
 
         internal static void PrintHelp()
         {
