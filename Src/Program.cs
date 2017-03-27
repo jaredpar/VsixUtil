@@ -100,15 +100,23 @@ namespace VsixUtil
 
         // NOTE: Assumes VS2017 has been installed at default location.
         // Returns first SKU that it finds (e.g. Community, Professional or Enterprise).
-        private static string GetApplicationPathVs2017(string[] skuPreference)
+        static string GetApplicationPathVs2017(string[] skuPreference)
         {
             foreach (var sku in skuPreference)
             {
-                var path = string.Format(@"%ProgramFiles(x86)%\Microsoft Visual Studio\2017\{0}\Common7\IDE\devenv.exe", sku);
-                path = Environment.ExpandEnvironmentVariables(path);
-                if (File.Exists(path))
+                var searchPaths = new []
                 {
-                    return path;
+                    @"%ProgramFiles(x86)%\Microsoft Visual Studio\2017\{0}\Common7\IDE\devenv.exe",
+                    @"%ProgramFiles(x86)%\Microsoft Visual Studio\{0}\Common7\IDE\devenv.exe"
+                };
+
+                foreach(var path in searchPaths)
+                {
+                    var expandedPath = Environment.ExpandEnvironmentVariables(string.Format(path, sku));
+                    if (File.Exists(expandedPath))
+                    {
+                        return expandedPath;
+                    }
                 }
             }
 
