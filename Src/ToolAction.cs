@@ -1,6 +1,6 @@
 ﻿namespace VsixUtil
 {
-    internal enum ToolAction
+    public enum ToolAction
     {
         Install,
         Uninstall,

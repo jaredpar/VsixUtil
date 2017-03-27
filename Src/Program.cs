@@ -3,9 +3,9 @@ using System.IO;
 
 namespace VsixUtil
 {
-    internal class Program
+    public class Program
     {
-        private static CommandLine ParseCommandLine(string[] args)
+        public static CommandLine ParseCommandLine(params string[] args)
         {
             if (args.Length == 0)
             {
@@ -96,16 +96,16 @@ namespace VsixUtil
                         break;
                     default:
                         arg = args[index];
-                        if (!File.Exists(arg))
+                        if(!arg.StartsWith("/") && args.Length == 1)
                         {
-                            Console.WriteLine("{0} is not a valid argument", arg);
-                            return CommandLine.Help;
+                            // Default to Install if there's a single argument.
+                            toolAction = ToolAction.Install;
+                            index += 1;
+                            break;
                         }
 
-                        // Default to Install if `arg` file exists.
-                        toolAction = ToolAction.Install;
-                        index += 1;
-                        break;
+                        Console.WriteLine("{0} is not a valid argument", arg);
+                        return CommandLine.Help;
                 }
             }
 

@@ -1,14 +1,14 @@
 ﻿namespace VsixUtil
 {
-    internal struct CommandLine
+    public struct CommandLine
     {
         internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, null, null, "", "");
 
-        internal readonly ToolAction ToolAction;
-        internal readonly string RootSuffix;
-        internal readonly string Version;
-        internal readonly string[] Skus;
-        internal readonly string Arg;
+        public readonly ToolAction ToolAction;
+        public readonly string RootSuffix;
+        public readonly string Version;
+        public readonly string[] Skus;
+        public readonly string Arg;
 
         internal CommandLine(ToolAction toolAction, string version, string[] skus, string rootSuffix, string arg)
         {
