@@ -123,11 +123,17 @@ namespace VsixUtil
                 return;
             }
 
-            var installedVersions = CommonUtil.GetInstalledVersions(commandLine);
+            var installedVersions = InstalledVersions.GetInstalledVersions(commandLine.Version, commandLine.Skus);
             foreach(var installedVersion in installedVersions)
             {
-                VersionManagerRunner.Run(installedVersion.ApplicationPath, installedVersion.Version,
-                    commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
+                var appPath = installedVersion.ApplicationPath;
+                var version = installedVersion.Version;
+                using (var applicationContext = new ApplicationContext(appPath, version))
+                {
+                    var versionManager = applicationContext.CreateInstance<VersionManager>();
+                    versionManager.Run(appPath, version,
+                        commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
+                }
             }
         }
     }

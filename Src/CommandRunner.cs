@@ -7,21 +7,22 @@ namespace VsixUtil
 {
     internal sealed class CommandRunner
     {
-        internal readonly string _appPath;
-        internal readonly Version _version;
-        internal readonly string _rootSuffix;
         internal readonly IVsExtensionManager _extensionManager;
+        internal string _appPath;
+        internal Version _version;
+        internal string _rootSuffix;
 
-        internal CommandRunner(string appPath, Version version, string rootSuffix, IVsExtensionManager extensionManager)
+        internal CommandRunner(IVsExtensionManager extensionManager)
+        {
+            _extensionManager = extensionManager;
+        }
+
+        public void Run(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg)
         {
             _appPath = appPath;
             _version = version;
             _rootSuffix = rootSuffix;
-            _extensionManager = extensionManager;
-        }
 
-        internal void Run(ToolAction toolAction, string arg)
-        {
             switch (toolAction)
             {
                 case ToolAction.Install:

@@ -1,6 +1,6 @@
 ﻿namespace VsixUtil
 {
-    internal class InstalledVersion
+    public class InstalledVersion
     {
         internal InstalledVersion(string applicationPath, Version version)
         {

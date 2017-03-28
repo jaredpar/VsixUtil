@@ -1,6 +1,6 @@
 ﻿namespace VsixUtil
 {
-    internal enum Version
+    public enum Version
     {
         Vs2010,
         Vs2012,

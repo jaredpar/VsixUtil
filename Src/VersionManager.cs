@@ -1,12 +1,11 @@
 ﻿using Microsoft.VisualStudio.ExtensionManager;
 using System;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 
 namespace VsixUtil
 {
-    internal sealed class VersionManager : MarshalByRefObject, IVersionManager
+    public sealed class VersionManager : MarshalByRefObject
     {
         public VersionManager()
         {
@@ -14,19 +13,9 @@ namespace VsixUtil
 
         public void Run(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg1)
         {
-            var appDir = Path.GetDirectoryName(appPath);
-            var probingPaths = ".;PrivateAssemblies;PublicAssemblies";
-            using (new ProbingPathResolver(appDir, probingPaths.Split(';')))
-            {
-                PrivateRun(appPath, version, rootSuffix, toolAction, arg1);
-            }
-        }
-
-        private static void PrivateRun(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg1)
-        {
-            var obj = CreateExtensionManager(appPath, version, rootSuffix);
-            var commandRunner = new CommandRunner(appPath, version, rootSuffix, (IVsExtensionManager)obj);
-            commandRunner.Run(toolAction, arg1);
+            var extensionManager = (IVsExtensionManager)CreateExtensionManager(appPath, version, rootSuffix);
+            var commandRunner = new CommandRunner(extensionManager);
+            commandRunner.Run(appPath, version, rootSuffix, toolAction, arg1);
         }
 
         private static Assembly LoadImplementationAssembly(Version version)
