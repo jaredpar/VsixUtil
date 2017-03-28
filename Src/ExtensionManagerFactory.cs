@@ -1,24 +1,12 @@
-﻿using Microsoft.VisualStudio.ExtensionManager;
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
+using Microsoft.VisualStudio.ExtensionManager;
 
 namespace VsixUtil
 {
-    public sealed class VersionManager : MarshalByRefObject
+    public sealed class ExtensionManagerFactory
     {
-        public VersionManager()
-        {
-        }
-
-        public void Run(IConsoleContext consoleContext, string appPath, Version version,
-            string rootSuffix, ToolAction toolAction, string arg1)
-        {
-            var extensionManager = (IVsExtensionManager)CreateExtensionManager(appPath, version, rootSuffix);
-            var commandRunner = new CommandRunner(extensionManager, consoleContext);
-            commandRunner.Run(appPath, version, rootSuffix, toolAction, arg1);
-        }
-
         private static Assembly LoadImplementationAssembly(Version version)
         {
             var format = "Microsoft.VisualStudio.ExtensionManager.Implementation, Version={0}.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a";
@@ -61,7 +49,7 @@ namespace VsixUtil
             return assembly.GetType("Microsoft.VisualStudio.ExtensionManager.ExtensionManagerService");
         }
 
-        internal static object CreateExtensionManager(string applicationPath, Version version, string rootSuffix)
+        public static IVsExtensionManager CreateExtensionManager(string applicationPath, Version version, string rootSuffix)
         {
             var settingsAssembly = LoadSettingsAssembly(version);
 
@@ -81,12 +69,12 @@ namespace VsixUtil
                 .Invoke(null, new[] { applicationPath, rootSuffix });
 
             var extensionManagerServiceType = GetExtensionManagerServiceType(version);
-            var obj = extensionManagerServiceType
+            var extensionManager = (IVsExtensionManager)extensionManagerServiceType
                 .GetConstructors()
                 .Where(x => x.GetParameters().Length == 1 && x.GetParameters()[0].ParameterType.Name.Contains("SettingsManager"))
                 .FirstOrDefault()
                 .Invoke(new[] { settingsManager });
-            return obj;
+            return extensionManager;
         }
     }
 }

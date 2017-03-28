@@ -53,9 +53,10 @@
     <Compile Include="InstalledVersions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ProxyConsoleContext.cs" />
+    <Compile Include="RemoteCommandRunner.cs" />
     <Compile Include="ToolAction.cs" />
     <Compile Include="Version.cs" />
-    <Compile Include="VersionManager.cs" />
+    <Compile Include="ExtensionManagerFactory.cs" />
     <Compile Include="ApplicationContext.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

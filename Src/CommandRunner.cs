@@ -12,10 +12,14 @@ namespace VsixUtil
         internal Version _version;
         internal string _rootSuffix;
 
-        internal CommandRunner(IVsExtensionManager extensionManager, IConsoleContext consoleContext)
+        internal CommandRunner(IConsoleContext consoleContext, IVsExtensionManager extensionManager,
+            string appPath, Version version, string rootSuffix)
         {
-            _extensionManager = extensionManager;
             Console = consoleContext;
+            _extensionManager = extensionManager;
+            _appPath = appPath;
+            _version = version;
+            _rootSuffix = rootSuffix;
         }
 
         IConsoleContext Console
@@ -23,12 +27,8 @@ namespace VsixUtil
             get;
         }
 
-        public void Run(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg)
+        public void Run(ToolAction toolAction, string arg)
         {
-            _appPath = appPath;
-            _version = version;
-            _rootSuffix = rootSuffix;
-
             switch (toolAction)
             {
                 case ToolAction.Install:

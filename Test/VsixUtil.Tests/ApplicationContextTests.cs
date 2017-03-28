@@ -17,9 +17,8 @@ namespace VsixUtil.Tests
 
             using (var applicationContext = new ApplicationContext(applicationPath, version))
             {
-                var instance = applicationContext.CreateInstance<VersionManager>();
-                var consoleContext = new ProxyConsoleContext();
-                instance.Run(consoleContext, applicationPath, version, "", ToolAction.List, null);
+                var instance = applicationContext.CreateInstance<RemoteCommandRunner>();
+                instance.Run(new ProxyConsoleContext(), applicationPath, version, "", ToolAction.List, null);
             }
         }
     }
