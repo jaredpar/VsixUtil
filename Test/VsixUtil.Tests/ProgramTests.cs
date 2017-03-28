@@ -60,28 +60,6 @@ namespace VsixUtil.Tests
                 Assert.That(commandLine.Version, Is.EqualTo(version));
             }
 
-            [TestCase("/s", "Community")]
-            [TestCase("/sku", "Community")]
-            [TestCase("/sku", "Enterprise;Professional")]
-            public void Sku(string option, string sku)
-            {
-                var skus = sku.Split(';');
-
-                var commandLine = Program.ParseCommandLine(option, sku);
-
-                Assert.That(commandLine.Skus, Is.EqualTo(skus));
-            }
-
-            [Test]
-            public void DefaultSkus()
-            {
-                var skus = "Community;Professional;Enterprise".Split(';');
-
-                var commandLine = Program.ParseCommandLine("/install", "foo.vsix");
-
-                Assert.That(commandLine.Skus, Is.EqualTo(skus));
-            }
-
             [TestCase("/r", "Exp")]
             [TestCase("/rootsuffix", "Exp")]
             public void RootSuffix(string option, string rootsuffix)

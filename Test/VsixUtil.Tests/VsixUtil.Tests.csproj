@@ -52,6 +52,7 @@
     <Compile Include="ApplicationContextTests.cs" />
     <Compile Include="ExtensionManagerFactoryTests.cs" />
     <Compile Include="InstalledVersionsTests.cs" />
+    <Compile Include="InstalledVersionUtilitiesTests.cs" />
     <Compile Include="ProgramTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

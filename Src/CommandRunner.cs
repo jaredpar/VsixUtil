@@ -9,11 +9,11 @@ namespace VsixUtil
     {
         internal readonly IVsExtensionManager _extensionManager;
         internal string _appPath;
-        internal Version _version;
+        internal VsVersion _version;
         internal string _rootSuffix;
 
         internal CommandRunner(IConsoleContext consoleContext, IVsExtensionManager extensionManager,
-            string appPath, Version version, string rootSuffix)
+            string appPath, VsVersion version, string rootSuffix)
         {
             Console = consoleContext;
             _extensionManager = extensionManager;

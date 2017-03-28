@@ -7,32 +7,32 @@ namespace VsixUtil
 {
     public sealed class ExtensionManagerFactory
     {
-        private static Assembly LoadImplementationAssembly(Version version)
+        private static Assembly LoadImplementationAssembly(VsVersion version)
         {
             var format = "Microsoft.VisualStudio.ExtensionManager.Implementation, Version={0}.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a";
             var strongName = string.Format(format, CommonUtil.GetVersionNumber(version));
             return Assembly.Load(strongName);
         }
 
-        private static Assembly LoadSettingsAssembly(Version version)
+        private static Assembly LoadSettingsAssembly(VsVersion version)
         {
             var format = "Microsoft.VisualStudio.Settings{0}, Version={1}.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a";
             string suffix = "";
             switch (version)
             {
-                case Version.Vs2010:
+                case VsVersion.Vs2010:
                     suffix = "";
                     break;
-                case Version.Vs2012:
+                case VsVersion.Vs2012:
                     suffix = ".11.0";
                     break;
-                case Version.Vs2013:
+                case VsVersion.Vs2013:
                     suffix = ".12.0";
                     break;
-                case Version.Vs2015:
+                case VsVersion.Vs2015:
                     suffix = ".14.0";
                     break;
-                case Version.Vs2017:
+                case VsVersion.Vs2017:
                     suffix = ".15.0";
                     break;
                 default:
@@ -43,13 +43,13 @@ namespace VsixUtil
             return Assembly.Load(strongName);
         }
 
-        private static Type GetExtensionManagerServiceType(Version version)
+        private static Type GetExtensionManagerServiceType(VsVersion version)
         {
             var assembly = LoadImplementationAssembly(version);
             return assembly.GetType("Microsoft.VisualStudio.ExtensionManager.ExtensionManagerService");
         }
 
-        public static IVsExtensionManager CreateExtensionManager(string applicationPath, Version version, string rootSuffix)
+        public static IVsExtensionManager CreateExtensionManager(string applicationPath, VsVersion version, string rootSuffix)
         {
             var settingsAssembly = LoadSettingsAssembly(version);
 

@@ -8,10 +8,10 @@ namespace VsixUtil
     public class ApplicationContext : IDisposable
     {
         AppDomain appDomain;
-        public ApplicationContext(string appPath, Version version)
+        public ApplicationContext(string appPath, VsVersion version)
         {
             AppDomainSetup appDomainSetup = new AppDomainSetup();
-            if (version != Version.Vs2010)
+            if (version != VsVersion.Vs2010)
             {
                 var configFile = Path.GetTempFileName();
                 File.WriteAllText(configFile, GenerateConfigFileContents(version));
@@ -71,9 +71,9 @@ namespace VsixUtil
             }
         }
 
-        private static string GenerateConfigFileContents(Version version)
+        private static string GenerateConfigFileContents(VsVersion version)
         {
-            Debug.Assert(version != Version.Vs2010);
+            Debug.Assert(version != VsVersion.Vs2010);
             const string contentFormat = @"
 <configuration>
   <runtime>
@@ -89,7 +89,7 @@ namespace VsixUtil
             return string.Format(contentFormat, GetAssemblyVersionNumber(version));
         }
 
-        internal static string GetAssemblyVersionNumber(Version version)
+        internal static string GetAssemblyVersionNumber(VsVersion version)
         {
             return string.Format("{0}.0.0.0", CommonUtil.GetVersionNumber(version));
         }

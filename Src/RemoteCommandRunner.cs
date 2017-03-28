@@ -5,7 +5,7 @@ namespace VsixUtil
 {
     public class RemoteCommandRunner : MarshalByRefObject
     {
-        public void Run(IConsoleContext consoleContext, string appPath, Version version,
+        public void Run(IConsoleContext consoleContext, string appPath, VsVersion version,
             string rootSuffix, ToolAction toolAction, string arg1)
         {
             var extensionManager = ExtensionManagerFactory.CreateExtensionManager(appPath, version, rootSuffix);

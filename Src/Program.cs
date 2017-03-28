@@ -14,7 +14,6 @@ namespace VsixUtil
 
             var toolAction = ToolAction.Help;
             var version = "";
-            var sku = "Community;Professional;Enterprise";
             var rootSuffix = "";
             var arg = "";
 
@@ -58,17 +57,6 @@ namespace VsixUtil
                         version = args[index + 1];
                         index += 2;
                         break;
-                    case "/s":
-                    case "/sku":
-                        if (index + 1 >= args.Length)
-                        {
-                            Console.Write("/sku requires an argument");
-                            return CommandLine.Help;
-                        }
-
-                        sku = args[index + 1];
-                        index += 2;
-                        break;
                     case "/r":
                     case "/rootsuffix":
                         if (index + 1 >= args.Length)
@@ -109,8 +97,7 @@ namespace VsixUtil
                 }
             }
 
-            var skus = sku.Split(';');
-            return new CommandLine(toolAction, version, skus, rootSuffix, arg);
+            return new CommandLine(toolAction, version, rootSuffix, arg);
         }
 
         internal static void Main(string[] args)
@@ -123,11 +110,11 @@ namespace VsixUtil
                 return;
             }
 
-            var installedVersions = InstalledVersions.GetInstalledVersions(commandLine.Version, commandLine.Skus);
+            var installedVersions = InstalledVersionUtilities.GetInstalledVersions(commandLine.Version);
             foreach(var installedVersion in installedVersions)
             {
                 var appPath = installedVersion.ApplicationPath;
-                var version = installedVersion.Version;
+                var version = (VsVersion)installedVersion.Version.Major;
                 using (var applicationContext = new ApplicationContext(appPath, version))
                 {
                     var versionManager = applicationContext.CreateInstance<RemoteCommandRunner>();
