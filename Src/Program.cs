@@ -130,8 +130,9 @@ namespace VsixUtil
                 var version = installedVersion.Version;
                 using (var applicationContext = new ApplicationContext(appPath, version))
                 {
+                    var consoleContext = new ProxyConsoleContext();
                     var versionManager = applicationContext.CreateInstance<VersionManager>();
-                    versionManager.Run(appPath, version,
+                    versionManager.Run(consoleContext, appPath, version,
                         commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
                 }
             }

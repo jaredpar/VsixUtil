@@ -48,9 +48,11 @@
     <Compile Include="CommandLine.cs" />
     <Compile Include="CommandRunner.cs" />
     <Compile Include="CommonUtil.cs" />
+    <Compile Include="IConsoleContext.cs" />
     <Compile Include="InstalledVersion.cs" />
     <Compile Include="InstalledVersions.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="ProxyConsoleContext.cs" />
     <Compile Include="ToolAction.cs" />
     <Compile Include="Version.cs" />
     <Compile Include="VersionManager.cs" />

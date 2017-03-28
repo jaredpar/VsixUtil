@@ -12,9 +12,15 @@ namespace VsixUtil
         internal Version _version;
         internal string _rootSuffix;
 
-        internal CommandRunner(IVsExtensionManager extensionManager)
+        internal CommandRunner(IVsExtensionManager extensionManager, IConsoleContext consoleContext)
         {
             _extensionManager = extensionManager;
+            Console = consoleContext;
+        }
+
+        IConsoleContext Console
+        {
+            get;
         }
 
         public void Run(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg)

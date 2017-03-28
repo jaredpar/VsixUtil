@@ -11,10 +11,11 @@ namespace VsixUtil
         {
         }
 
-        public void Run(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg1)
+        public void Run(IConsoleContext consoleContext, string appPath, Version version,
+            string rootSuffix, ToolAction toolAction, string arg1)
         {
             var extensionManager = (IVsExtensionManager)CreateExtensionManager(appPath, version, rootSuffix);
-            var commandRunner = new CommandRunner(extensionManager);
+            var commandRunner = new CommandRunner(extensionManager, consoleContext);
             commandRunner.Run(appPath, version, rootSuffix, toolAction, arg1);
         }
 
