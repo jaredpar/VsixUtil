@@ -1,24 +1,51 @@
 ﻿using System.IO;
 using NUnit.Framework;
+using System.Collections.Generic;
+using System.Reflection;
+using System;
 
 namespace VsixUtil.Tests
 {
     public class ApplicationContextTests
     {
-        [TestCase(@"C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\devenv.exe", VsVersion.Vs2015)]
-        [TestCase(@"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\devenv.exe", VsVersion.Vs2017)]
-        [TestCase(@"C:\Program Files (x86)\Microsoft Visual Studio\Preview\TeamExplorer\Common7\IDE\devenv.exe", VsVersion.Vs2017)]
-        public void List(string applicationPath, VsVersion version)
+        [TestCaseSource(nameof(GetInstalledVersions))]
+        public void ExtensionManagerAssembly_HasExpectedVersion(InstalledVersion installedVersion)
         {
-            if(!File.Exists(applicationPath))
+            string applicationPath = installedVersion.ApplicationPath;
+            var vsVersion = installedVersion.VsVersion;
+            using (var applicationContext = new ApplicationContext(applicationPath, vsVersion))
             {
-                return; // Ignore versions that don't exist.
-            }
+                var remote = applicationContext.CreateInstance<Remote>();
 
-            using (var applicationContext = new ApplicationContext(applicationPath, version))
+                var version = remote.GetAssemblyVersion("Microsoft.VisualStudio.ExtensionManager");
+
+                Assert.That(version.Major, Is.EqualTo(installedVersion.Version.Major));
+            }
+        }
+
+        [TestCaseSource(nameof(GetInstalledVersions))]
+        public void ExtensionManagerImplementationAssembly_HasExpectedVersion(InstalledVersion installedVersion)
+        {
+            string applicationPath = installedVersion.ApplicationPath;
+            var vsVersion = installedVersion.VsVersion;
+            using (var applicationContext = new ApplicationContext(applicationPath, vsVersion))
             {
-                var instance = applicationContext.CreateInstance<RemoteCommandRunner>();
-                instance.Run(new ProxyConsoleContext(), applicationPath, version, "", ToolAction.List, null);
+                var remote = applicationContext.CreateInstance<Remote>();
+
+                var version = remote.GetAssemblyVersion("Microsoft.VisualStudio.ExtensionManager.Implementation");
+
+                Assert.That(version.Major, Is.EqualTo(installedVersion.Version.Major));
+            }
+        }
+
+        static IEnumerable<InstalledVersion> GetInstalledVersions() => InstalledVersionUtilities.GetInstalledVersions();
+
+        class Remote : MarshalByRefObject
+        {
+            public Version GetAssemblyVersion(string assemblyName)
+            {
+                var assembly = Assembly.Load(assemblyName);
+                return assembly.GetName().Version;
             }
         }
     }

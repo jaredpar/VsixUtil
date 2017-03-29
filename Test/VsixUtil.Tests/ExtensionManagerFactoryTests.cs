@@ -1,36 +1,28 @@
 ﻿using System;
 using System.IO;
 using NUnit.Framework;
+using System.Collections.Generic;
 
 namespace VsixUtil.Tests
 {
     public class ExtensionManagerFactoryTests
     {
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio 10.0\Common7\IDE\devenv.exe", VsVersion.Vs2010)]
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio 11.0\Common7\IDE\devenv.exe", VsVersion.Vs2012)]
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio 12.0\Common7\IDE\devenv.exe", VsVersion.Vs2013)]
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio 14.0\Common7\IDE\devenv.exe", VsVersion.Vs2015)]
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\Common7\IDE\devenv.exe", VsVersion.Vs2017)]
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Professional\Common7\IDE\devenv.exe", VsVersion.Vs2017)]
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\devenv.exe", VsVersion.Vs2017)]
-        [TestCase(@"%ProgramFiles(x86)%\Microsoft Visual Studio\Preview\TeamExplorer\Common7\IDE\devenv.exe", VsVersion.Vs2017)]
-        public void WasCreated(string applicationPath, VsVersion version)
+        [TestCaseSource(nameof(GetInstalledVersions))]
+        public void GetInstalledVersions_CheckExtensionManagerWasCreated(InstalledVersion installedVersion)
         {
-            applicationPath = Environment.ExpandEnvironmentVariables(applicationPath);
-            if(!File.Exists(applicationPath))
-            {
-                return;
-            }
-
-            using (var applicationContext = new ApplicationContext(applicationPath, version))
+            var applicationPath = installedVersion.ApplicationPath;
+            var vsVersion = installedVersion.VsVersion;
+            using (var applicationContext = new ApplicationContext(applicationPath, vsVersion))
             {
                 var remote = applicationContext.CreateInstance<Remote>();
 
-                var exists = remote.WasCreated(applicationPath, version);
+                var exists = remote.WasCreated(applicationPath, vsVersion);
 
                 Assert.That(exists, Is.True);
             }
         }
+
+        static IEnumerable<InstalledVersion> GetInstalledVersions() => InstalledVersionUtilities.GetInstalledVersions();
 
         class Remote : MarshalByRefObject
         {
@@ -40,6 +32,5 @@ namespace VsixUtil.Tests
                 return extensionManager != null;
             }
         }
-
     }
 }
