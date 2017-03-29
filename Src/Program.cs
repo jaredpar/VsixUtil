@@ -114,11 +114,11 @@ namespace VsixUtil
             foreach(var installedVersion in installedVersions)
             {
                 var appPath = installedVersion.ApplicationPath;
-                var version = (VsVersion)installedVersion.Version.Major;
-                using (var applicationContext = new ApplicationContext(appPath, version))
+                var vsVersion = installedVersion.VsVersion;
+                using (var applicationContext = new ApplicationContext(appPath, vsVersion))
                 {
                     var versionManager = applicationContext.CreateInstance<RemoteCommandRunner>();
-                    versionManager.Run(new ProxyConsoleContext(), appPath, version,
+                    versionManager.Run(new ProxyConsoleContext(), appPath, vsVersion,
                         commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
                 }
             }

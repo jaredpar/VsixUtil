@@ -10,7 +10,7 @@ namespace VsixUtil
 {
     public class InstalledVersionUtilities
     {
-        readonly static string[] LegacyVersions = { "10.0", "11.0", "12.0", "14.0" };
+        readonly static VsVersion[] LegacyVersions = { VsVersion.Vs2010, VsVersion.Vs2012, VsVersion.Vs2013, VsVersion.Vs2015 };
 
         public static IEnumerable<InstalledVersion> GetInstalledVersions(string includeVersion)
         {
@@ -84,7 +84,8 @@ namespace VsixUtil
         {
             foreach (var legacyVersion in LegacyVersions)
             {
-                var version = new Version(legacyVersion);
+                var majorVersion = CommonUtil.GetVersionNumber(legacyVersion);
+                var version = new Version(majorVersion, 0);
                 var appPath = GetApplicationPathFromRegistry(version);
                 if (appPath != null && File.Exists(appPath))
                 {
