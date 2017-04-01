@@ -1,9 +1,7 @@
-﻿using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
-using System.Linq;
-using System.Text;
+using System.Collections.Generic;
+using Microsoft.Win32;
 using Microsoft.VisualStudio.Setup.Configuration;
 
 namespace VsixUtil
@@ -11,28 +9,6 @@ namespace VsixUtil
     public class InstalledVersionUtilities
     {
         readonly static VsVersion[] LegacyVersions = { VsVersion.Vs2010, VsVersion.Vs2012, VsVersion.Vs2013, VsVersion.Vs2015 };
-
-        public static IEnumerable<InstalledVersion> GetInstalledVersions(string includeVersion)
-        {
-            foreach(var installedVersion in GetInstalledVersions())
-            {
-                if(IncludeVersion(includeVersion, installedVersion.Version))
-                {
-                    yield return installedVersion;
-                }
-            }
-        }
-
-        static bool IncludeVersion(string number, Version version)
-        {
-            if (string.IsNullOrEmpty(number))
-            {
-                return true;
-            }
-
-            return number == version.Major.ToString();
-        }
-
 
         public static IEnumerable<InstalledVersion> GetInstalledVersions()
         {
@@ -55,7 +31,8 @@ namespace VsixUtil
                 var appPath = setupInstance.ResolvePath(productPath);
                 var installationVersion = setupInstance.GetInstallationVersion();
                 var version = new Version(installationVersion);
-                yield return new InstalledVersion(appPath, version);
+                var vsVersion = VsVersionUtil.GetVsVersion(version);
+                yield return new InstalledVersion(appPath, vsVersion);
             }
         }
 
@@ -82,21 +59,20 @@ namespace VsixUtil
 
         public static IEnumerable<InstalledVersion> GetLegacyInstalledVersions()
         {
-            foreach (var legacyVersion in LegacyVersions)
+            foreach (var vsVersion in LegacyVersions)
             {
-                var majorVersion = CommonUtil.GetVersionNumber(legacyVersion);
-                var version = new Version(majorVersion, 0);
-                var appPath = GetApplicationPathFromRegistry(version);
+                var majorVersion = VsVersionUtil.GetVersionNumber(vsVersion);
+                var appPath = GetApplicationPathFromRegistry(majorVersion);
                 if (appPath != null && File.Exists(appPath))
                 {
-                    yield return new InstalledVersion(appPath, version);
+                    yield return new InstalledVersion(appPath, vsVersion);
                 }
             }
         }
 
-        private static string GetApplicationPathFromRegistry(Version version)
+        private static string GetApplicationPathFromRegistry(int majorVersion)
         {
-            var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", version.Major);
+            var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", majorVersion);
             using (var registryKey = Registry.LocalMachine.OpenSubKey(path))
             {
                 if (registryKey == null)

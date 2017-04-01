@@ -1,5 +1,4 @@
-﻿using System.IO;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using System.Collections.Generic;
 using System.Reflection;
 using System;
@@ -19,7 +18,8 @@ namespace VsixUtil.Tests
 
                 var version = remote.GetAssemblyVersion("Microsoft.VisualStudio.ExtensionManager");
 
-                Assert.That(version.Major, Is.EqualTo(installedVersion.Version.Major));
+                var versionNumber = VsVersionUtil.GetVersionNumber(installedVersion.VsVersion);
+                Assert.That(version.Major, Is.EqualTo(versionNumber));
             }
         }
 
@@ -34,7 +34,8 @@ namespace VsixUtil.Tests
 
                 var version = remote.GetAssemblyVersion("Microsoft.VisualStudio.ExtensionManager.Implementation");
 
-                Assert.That(version.Major, Is.EqualTo(installedVersion.Version.Major));
+                var versionNumber = VsVersionUtil.GetVersionNumber(installedVersion.VsVersion);
+                Assert.That(version.Major, Is.EqualTo(versionNumber));
             }
         }
 

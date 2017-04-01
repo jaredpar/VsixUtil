@@ -1,5 +1,5 @@
 ﻿using System;
-using System.IO;
+using System.Linq;
 
 namespace VsixUtil
 {
@@ -13,7 +13,7 @@ namespace VsixUtil
             }
 
             var toolAction = ToolAction.Help;
-            var version = "";
+            VsVersion? version = null;
             var rootSuffix = "";
             var arg = "";
 
@@ -54,7 +54,7 @@ namespace VsixUtil
                             return CommandLine.Help;
                         }
 
-                        version = args[index + 1];
+                        version = VsVersionUtil.ToVsVersion(args[index + 1]);
                         index += 2;
                         break;
                     case "/r":
@@ -110,7 +110,12 @@ namespace VsixUtil
                 return;
             }
 
-            var installedVersions = InstalledVersionUtilities.GetInstalledVersions(commandLine.Version);
+            var installedVersions = InstalledVersionUtilities.GetInstalledVersions();
+            if(commandLine.VsVersion != null)
+            {
+                installedVersions = installedVersions.Where(iv => iv.VsVersion == commandLine.VsVersion);
+            }
+
             foreach(var installedVersion in installedVersions)
             {
                 var appPath = installedVersion.ApplicationPath;

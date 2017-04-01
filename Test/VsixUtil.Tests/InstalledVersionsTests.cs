@@ -10,7 +10,7 @@ namespace VsixUtil.Tests
             [Test]
             public void ApplicationPath_FileExists()
             {
-                var installedVersions = InstalledVersionUtilities.GetInstalledVersions(null);
+                var installedVersions = InstalledVersionUtilities.GetInstalledVersions();
                 foreach (var installedVersion in installedVersions)
                 {
                     Assert.That(File.Exists(installedVersion.ApplicationPath));

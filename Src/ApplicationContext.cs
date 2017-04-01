@@ -91,7 +91,7 @@ namespace VsixUtil
 
         internal static string GetAssemblyVersionNumber(VsVersion version)
         {
-            return string.Format("{0}.0.0.0", CommonUtil.GetVersionNumber(version));
+            return string.Format("{0}.0.0.0", VsVersionUtil.GetVersionNumber(version));
         }
     }
 }

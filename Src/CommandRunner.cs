@@ -9,16 +9,16 @@ namespace VsixUtil
     {
         internal readonly IVsExtensionManager _extensionManager;
         internal string _appPath;
-        internal VsVersion _version;
+        internal VsVersion _vsVersion;
         internal string _rootSuffix;
 
         internal CommandRunner(IConsoleContext consoleContext, IVsExtensionManager extensionManager,
-            string appPath, VsVersion version, string rootSuffix)
+            string appPath, VsVersion vsVersion, string rootSuffix)
         {
             Console = consoleContext;
             _extensionManager = extensionManager;
             _appPath = appPath;
-            _version = version;
+            _vsVersion = vsVersion;
             _rootSuffix = rootSuffix;
         }
 
@@ -52,7 +52,7 @@ namespace VsixUtil
         {
             try
             {
-                Console.Write("{0} Install ... ", _version);
+                Console.Write("{0} Install ... ", _vsVersion);
                 var installableExtension = _extensionManager.CreateInstallableExtension(extensionPath);
                 var identifier = installableExtension.Header.Identifier;
                 UninstallSilent(identifier);
@@ -100,7 +100,7 @@ namespace VsixUtil
         {
             try
             {
-                Console.Write("{0} Uninstall ... ", _version);
+                Console.Write("{0} Uninstall ... ", _vsVersion);
                 var installedExtension = _extensionManager.GetInstalledExtension(identifier);
                 if (installedExtension != null)
                 {
@@ -134,7 +134,7 @@ namespace VsixUtil
         private void RunList(string filter)
         {
             Console.WriteLine();
-            Console.WriteLine($"{_appPath} ({_version})");
+            Console.WriteLine($"{_appPath} ({_vsVersion})");
             Console.WriteLine("  {0, -40} - {1}", "Name", "Identifier");
 
             var regex = filter != null

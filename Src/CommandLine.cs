@@ -2,17 +2,17 @@
 {
     public struct CommandLine
     {
-        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, "", "", "");
+        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, null, "", "");
 
         public readonly ToolAction ToolAction;
         public readonly string RootSuffix;
-        public readonly string Version;
+        public readonly VsVersion? VsVersion;
         public readonly string Arg;
 
-        internal CommandLine(ToolAction toolAction, string version, string rootSuffix, string arg)
+        internal CommandLine(ToolAction toolAction, VsVersion? vsVersion, string rootSuffix, string arg)
         {
             ToolAction = toolAction;
-            Version = version;
+            VsVersion = vsVersion;
             RootSuffix = rootSuffix;
             Arg = arg;
         }

@@ -62,6 +62,7 @@
     <Compile Include="VsVersion.cs" />
     <Compile Include="ExtensionManagerFactory.cs" />
     <Compile Include="ApplicationContext.cs" />
+    <Compile Include="VsVersionUtil.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

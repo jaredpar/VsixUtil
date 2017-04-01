@@ -10,7 +10,7 @@ namespace VsixUtil
         private static Assembly LoadImplementationAssembly(VsVersion version)
         {
             var format = "Microsoft.VisualStudio.ExtensionManager.Implementation, Version={0}.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a";
-            var strongName = string.Format(format, CommonUtil.GetVersionNumber(version));
+            var strongName = string.Format(format, VsVersionUtil.GetVersionNumber(version));
             return Assembly.Load(strongName);
         }
 
@@ -39,7 +39,7 @@ namespace VsixUtil
                     throw new Exception("Bad Version");
             }
 
-            var strongName = string.Format(format, suffix, CommonUtil.GetVersionNumber(version));
+            var strongName = string.Format(format, suffix, VsVersionUtil.GetVersionNumber(version));
             return Assembly.Load(strongName);
         }
 

@@ -51,13 +51,13 @@ namespace VsixUtil.Tests
                 Assert.That(commandLine.ToolAction, Is.EqualTo(toolAction));
             }
 
-            [TestCase("/v", "10")]
-            [TestCase("/version", "10")]
-            public void Version(string option, string version)
+            [TestCase("/v", "10", VsVersion.Vs2010)]
+            [TestCase("/version", "10", VsVersion.Vs2010)]
+            public void Version(string option, string version, VsVersion vsVersion)
             {
                 var commandLine = Program.ParseCommandLine(option, version);
 
-                Assert.That(commandLine.Version, Is.EqualTo(version));
+                Assert.That(commandLine.VsVersion, Is.EqualTo(vsVersion));
             }
 
             [TestCase("/r", "Exp")]
