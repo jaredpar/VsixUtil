@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace VsixUtil
 {
-    public class Program
+    public static class Program
     {
         public static CommandLine ParseCommandLine(params string[] args)
         {
@@ -14,6 +14,7 @@ namespace VsixUtil
 
             var toolAction = ToolAction.Help;
             VsVersion? version = null;
+            string product = null;
             var rootSuffix = "";
             var arg = "";
 
@@ -57,6 +58,17 @@ namespace VsixUtil
                         version = VsVersionUtil.ToVsVersion(args[index + 1]);
                         index += 2;
                         break;
+                    case "/p":
+                    case "/product":
+                        if (index + 1 >= args.Length)
+                        {
+                            Console.Write("/product requires an argument");
+                            return CommandLine.Help;
+                        }
+
+                        product = args[index + 1];
+                        index += 2;
+                        break;
                     case "/r":
                     case "/rootsuffix":
                         if (index + 1 >= args.Length)
@@ -97,7 +109,7 @@ namespace VsixUtil
                 }
             }
 
-            return new CommandLine(toolAction, version, rootSuffix, arg);
+            return new CommandLine(toolAction, version, product, rootSuffix, arg);
         }
 
         internal static void Main(string[] args)
@@ -110,23 +122,33 @@ namespace VsixUtil
                 return;
             }
 
-            var installedVersions = InstalledVersionUtilities.GetInstalledVersions();
-            if(commandLine.VsVersion != null)
-            {
-                installedVersions = installedVersions.Where(iv => iv.VsVersion == commandLine.VsVersion);
-            }
-
-            foreach(var installedVersion in installedVersions)
+            var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
+            foreach (var installedVersion in installedVersions)
             {
                 var appPath = installedVersion.ApplicationPath;
                 var vsVersion = installedVersion.VsVersion;
                 using (var applicationContext = new ApplicationContext(appPath, vsVersion))
                 {
-                    var versionManager = applicationContext.CreateInstance<RemoteCommandRunner>();
-                    versionManager.Run(new ProxyConsoleContext(), appPath, vsVersion,
+                    var remoteCommandRunner = applicationContext.CreateInstance<RemoteCommandRunner>();
+                    remoteCommandRunner.Run(new ProxyConsoleContext(), appPath, vsVersion,
                         commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
                 }
             }
+        }
+
+        public static bool Filter(InstalledVersion installedVersion, CommandLine commandLine)
+        {
+            return FilterVsVersion(installedVersion, commandLine.VsVersion) && FilterProduct(installedVersion, commandLine.Product);
+        }
+
+        static bool FilterVsVersion(InstalledVersion installedVersion, VsVersion? vsVersion)
+        {
+            return vsVersion?.Equals(installedVersion.VsVersion) ?? true;
+        }
+
+        static bool FilterProduct(InstalledVersion installedVersion, string product)
+        {
+            return product == null || (installedVersion.Product?.StartsWith(product, StringComparison.OrdinalIgnoreCase) ?? false);
         }
     }
 }

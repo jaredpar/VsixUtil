@@ -68,6 +68,37 @@ namespace VsixUtil.Tests
 
                 Assert.That(commandLine.RootSuffix, Is.EqualTo(rootsuffix));
             }
+
+            public class TheFilterMethod
+            {
+                [TestCase(VsVersion.Vs2010, VsVersion.Vs2010, true)]
+                [TestCase(VsVersion.Vs2010, VsVersion.Vs2012, false)]
+                [TestCase(VsVersion.Vs2010, null, true)]
+                public void FilterVsVersion(VsVersion vsVersion, VsVersion filterVsVersion, bool expect)
+                {
+                    var installedVersion = new InstalledVersion(null, vsVersion, "Community");
+                    var commandLine = new CommandLine(vsVersion: filterVsVersion);
+
+                    var include = Program.Filter(installedVersion, commandLine);
+
+                    Assert.That(include, Is.EqualTo(expect));
+                }
+
+                [TestCase("Community", null, true)]
+                [TestCase("Community", "Community", true)]
+                [TestCase("Community", "community", true)]
+                [TestCase("Community", "com", true)]
+                [TestCase("Community", "Enterprise", false)]
+                public void FilterProduct(string product, string filterProduct, bool expect)
+                {
+                    var installedVersion = new InstalledVersion(null, VsVersion.Vs2010, product);
+                    var commandLine = new CommandLine(product: filterProduct);
+
+                    var include = Program.Filter(installedVersion, commandLine);
+
+                    Assert.That(include, Is.EqualTo(expect));
+                }
+            }
         }
 
     }

@@ -4,11 +4,13 @@
     {
         public string ApplicationPath { get; }
         public VsVersion VsVersion { get; }
+        public string Product { get; }
 
-        internal InstalledVersion(string applicationPath, VsVersion vsVersion)
+        public InstalledVersion(string applicationPath, VsVersion vsVersion, string product = null)
         {
             ApplicationPath = applicationPath;
             VsVersion = vsVersion;
+            Product = product;
         }
     }
 }

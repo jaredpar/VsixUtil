@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using Microsoft.VisualStudio.Setup.Configuration;
+using System.Linq;
 
 namespace VsixUtil
 {
@@ -32,7 +33,8 @@ namespace VsixUtil
                 var installationVersion = setupInstance.GetInstallationVersion();
                 var version = new Version(installationVersion);
                 var vsVersion = VsVersionUtil.GetVsVersion(version);
-                yield return new InstalledVersion(appPath, vsVersion);
+                var product = setupInstance.GetProduct().GetId().Split('.').Last();
+                yield return new InstalledVersion(appPath, vsVersion, product);
             }
         }
 
