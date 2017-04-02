@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace VsixUtil
 {
-    internal sealed class CommandRunner
+    public sealed class CommandRunner : MarshalByRefObject
     {
         internal readonly IVsExtensionManager _extensionManager;
         internal string _appPath;
@@ -41,7 +41,7 @@ namespace VsixUtil
                     RunList(arg);
                     break;
                 case ToolAction.Help:
-                    CommonUtil.PrintHelp();
+                    Program.PrintHelp(Console);
                     break;
                 default:
                     throw new Exception(string.Format("Not implemented {0}", toolAction));

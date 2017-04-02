@@ -51,13 +51,12 @@
   <ItemGroup>
     <Compile Include="CommandLine.cs" />
     <Compile Include="CommandRunner.cs" />
-    <Compile Include="CommonUtil.cs" />
     <Compile Include="IConsoleContext.cs" />
     <Compile Include="InstalledVersion.cs" />
     <Compile Include="InstalledVersionUtilities.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="ProxyConsoleContext.cs" />
-    <Compile Include="RemoteCommandRunner.cs" />
+    <Compile Include="ConsoleContext.cs" />
+    <Compile Include="CommandRunnerFactory.cs" />
     <Compile Include="ToolAction.cs" />
     <Compile Include="VsVersion.cs" />
     <Compile Include="ExtensionManagerFactory.cs" />

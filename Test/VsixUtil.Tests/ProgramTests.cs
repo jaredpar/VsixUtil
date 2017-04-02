@@ -9,7 +9,9 @@ namespace VsixUtil.Tests
             [Test]
             public void NoArg_Help()
             {
-                var commandLine = Program.ParseCommandLine();
+                var consoleContext = new TestConsoleContext();
+
+                var commandLine = Program.ParseCommandLine(consoleContext);
 
                 Assert.That(commandLine.ToolAction, Is.EqualTo(ToolAction.Help));
             }
@@ -17,9 +19,10 @@ namespace VsixUtil.Tests
             [Test]
             public void SingleArg_Install()
             {
+                var consoleContext = new TestConsoleContext();
                 var vsixFile = "foo.vsix";
 
-                var commandLine = Program.ParseCommandLine(vsixFile);
+                var commandLine = Program.ParseCommandLine(consoleContext, vsixFile);
 
                 Assert.That(commandLine.ToolAction, Is.EqualTo(ToolAction.Install));
                 Assert.That(commandLine.Arg, Is.EqualTo(vsixFile));
@@ -33,7 +36,9 @@ namespace VsixUtil.Tests
             [TestCase("/list", "search", ToolAction.List)]
             public void ToolActionWithArg(string option, string arg, ToolAction toolAction)
             {
-                var commandLine = Program.ParseCommandLine(option, arg);
+                var consoleContext = new TestConsoleContext();
+
+                var commandLine = Program.ParseCommandLine(consoleContext, option, arg);
 
                 Assert.That(commandLine.ToolAction, Is.EqualTo(toolAction));
                 Assert.That(commandLine.Arg, Is.EqualTo(arg));
@@ -46,7 +51,9 @@ namespace VsixUtil.Tests
             [TestCase("/version", ToolAction.Help)]
             public void ToolActionNoArg(string option, ToolAction toolAction)
             {
-                var commandLine = Program.ParseCommandLine(option);
+                var consoleContext = new TestConsoleContext();
+
+                var commandLine = Program.ParseCommandLine(consoleContext, option);
 
                 Assert.That(commandLine.ToolAction, Is.EqualTo(toolAction));
             }
@@ -55,7 +62,9 @@ namespace VsixUtil.Tests
             [TestCase("/version", "10", VsVersion.Vs2010)]
             public void Version(string option, string version, VsVersion vsVersion)
             {
-                var commandLine = Program.ParseCommandLine(option, version);
+                var consoleContext = new TestConsoleContext();
+
+                var commandLine = Program.ParseCommandLine(consoleContext, option, version);
 
                 Assert.That(commandLine.VsVersion, Is.EqualTo(vsVersion));
             }
@@ -64,7 +73,9 @@ namespace VsixUtil.Tests
             [TestCase("/rootsuffix", "Exp")]
             public void RootSuffix(string option, string rootsuffix)
             {
-                var commandLine = Program.ParseCommandLine(option, rootsuffix);
+                var consoleContext = new TestConsoleContext();
+
+                var commandLine = Program.ParseCommandLine(consoleContext, option, rootsuffix);
 
                 Assert.That(commandLine.RootSuffix, Is.EqualTo(rootsuffix));
             }

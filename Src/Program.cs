@@ -5,7 +5,7 @@ namespace VsixUtil
 {
     public static class Program
     {
-        public static CommandLine ParseCommandLine(params string[] args)
+        public static CommandLine ParseCommandLine(IConsoleContext consoleContext, params string[] args)
         {
             if (args.Length == 0)
             {
@@ -27,7 +27,7 @@ namespace VsixUtil
                     case "/install":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/install requires an argument");
+                            consoleContext.Write("/install requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -39,7 +39,7 @@ namespace VsixUtil
                     case "/uninstall":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/uninstall requires an argument");
+                            consoleContext.Write("/uninstall requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -51,7 +51,7 @@ namespace VsixUtil
                     case "/version":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/version requires an argument");
+                            consoleContext.Write("/version requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -62,7 +62,7 @@ namespace VsixUtil
                     case "/product":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/product requires an argument");
+                            consoleContext.Write("/product requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -73,7 +73,7 @@ namespace VsixUtil
                     case "/rootsuffix":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/rootSuffix requires an argument");
+                            consoleContext.Write("/rootSuffix requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -104,7 +104,7 @@ namespace VsixUtil
                             break;
                         }
 
-                        Console.WriteLine("{0} is not a valid argument", arg);
+                        consoleContext.WriteLine("{0} is not a valid argument", arg);
                         return CommandLine.Help;
                 }
             }
@@ -114,10 +114,11 @@ namespace VsixUtil
 
         internal static void Main(string[] args)
         {
-            var commandLine = ParseCommandLine(args);
+            var consoleContext = new ConsoleContext(Console.Out);
+            var commandLine = ParseCommandLine(consoleContext, args);
             if (commandLine.ToolAction == ToolAction.Help)
             {
-                CommonUtil.PrintHelp();
+                PrintHelp(consoleContext);
                 Environment.Exit(1);
                 return;
             }
@@ -129,9 +130,9 @@ namespace VsixUtil
                 var vsVersion = installedVersion.VsVersion;
                 using (var applicationContext = new ApplicationContext(appPath, vsVersion))
                 {
-                    var remoteCommandRunner = applicationContext.CreateInstance<RemoteCommandRunner>();
-                    remoteCommandRunner.Run(new ProxyConsoleContext(), appPath, vsVersion,
-                        commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
+                    var factory = applicationContext.CreateInstance<CommandRunnerFactory>();
+                    var commandRunner = factory.Create(consoleContext, appPath, vsVersion, commandLine.RootSuffix);
+                    commandRunner.Run(commandLine.ToolAction, commandLine.Arg);
                 }
             }
         }
@@ -149,6 +150,13 @@ namespace VsixUtil
         static bool FilterProduct(InstalledVersion installedVersion, string product)
         {
             return product == null || (installedVersion.Product?.StartsWith(product, StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+
+        internal static void PrintHelp(IConsoleContext consoleContext)
+        {
+            consoleContext.WriteLine("vsixutil [/install] extensionPath [/version number] [/rootSuffix name]");
+            consoleContext.WriteLine("vsixutil /uninstall identifier [/version number] [/rootSuffix name]");
+            consoleContext.WriteLine("vsixutil /list [filter]");
         }
     }
 }
