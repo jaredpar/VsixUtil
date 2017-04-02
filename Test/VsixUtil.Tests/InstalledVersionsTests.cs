@@ -1,34 +1,39 @@
-﻿using System.IO;
-using NUnit.Framework;
-using System.Linq;
+﻿using NUnit.Framework;
 
 namespace VsixUtil.Tests
 {
-    public class InstalledVersionsTests
+    public class InstalledVersionTests
     {
-        public class GetInstalledVersions
+        public class TheToStringMethod
         {
             [Test]
-            public void ApplicationPath_FileExists()
+            public void ToString_ContainsApplicationPath()
             {
-                var installedVersions = InstalledVersionUtilities.GetInstalledVersions();
-                foreach (var installedVersion in installedVersions)
-                {
-                    Assert.That(File.Exists(installedVersion.ApplicationPath));
-                }
+                var appPath = @"x:\app\path";
+
+                var text = new InstalledVersion(appPath, VsVersion.Vs2010, "Community").ToString();
+
+                Assert.That(text, Does.Contain(appPath));
             }
 
             [Test]
-            public void Products()
+            public void ToString_ContainsProduct()
             {
-                var installedVersions = InstalledVersionUtilities.GetInstalledVersions();
-                installedVersions = installedVersions.Where(iv => iv.VsVersion == VsVersion.Vs2017);
+                var product = "Enterprise";
 
-                foreach (var installedVersion in installedVersions)
-                {
-                    Assert.That(installedVersion.Product, Is.Not.Null);
-                    Assert.That(installedVersion.Product, Does.Not.Contain("."));
-                }
+                var text = new InstalledVersion(@"x:\app\path", VsVersion.Vs2010, product).ToString();
+
+                Assert.That(text, Does.Contain(product));
+            }
+
+            [Test]
+            public void ToString_ContainsVsVersion()
+            {
+                var vsVersion = VsVersion.Vs2017;
+
+                var text = new InstalledVersion(@"x:\app\path", vsVersion, "Community").ToString();
+
+                Assert.That(text, Does.Contain(vsVersion.ToString()));
             }
         }
     }

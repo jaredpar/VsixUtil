@@ -126,12 +126,10 @@ namespace VsixUtil
             var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
             foreach (var installedVersion in installedVersions)
             {
-                var appPath = installedVersion.ApplicationPath;
-                var vsVersion = installedVersion.VsVersion;
-                using (var applicationContext = new ApplicationContext(appPath, vsVersion))
+                using (var applicationContext = new ApplicationContext(installedVersion))
                 {
                     var factory = applicationContext.CreateInstance<CommandRunnerFactory>();
-                    var commandRunner = factory.Create(consoleContext, appPath, vsVersion, commandLine.RootSuffix);
+                    var commandRunner = factory.Create(consoleContext, installedVersion, commandLine.RootSuffix);
                     commandRunner.Run(commandLine.ToolAction, commandLine.Arg);
                 }
             }

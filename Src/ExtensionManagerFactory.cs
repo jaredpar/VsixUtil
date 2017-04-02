@@ -49,9 +49,9 @@ namespace VsixUtil
             return assembly.GetType("Microsoft.VisualStudio.ExtensionManager.ExtensionManagerService");
         }
 
-        public static IVsExtensionManager CreateExtensionManager(string applicationPath, VsVersion version, string rootSuffix)
+        public static IVsExtensionManager CreateExtensionManager(InstalledVersion installedVersion, string rootSuffix)
         {
-            var settingsAssembly = LoadSettingsAssembly(version);
+            var settingsAssembly = LoadSettingsAssembly(installedVersion.VsVersion);
 
             var externalSettingsManagerType = settingsAssembly.GetType("Microsoft.VisualStudio.Settings.ExternalSettingsManager");
             var settingsManager = externalSettingsManagerType
@@ -66,9 +66,9 @@ namespace VsixUtil
                         parameters[1].ParameterType == typeof(string);
                 })
                 .FirstOrDefault()
-                .Invoke(null, new[] { applicationPath, rootSuffix });
+                .Invoke(null, new[] { installedVersion.ApplicationPath, rootSuffix });
 
-            var extensionManagerServiceType = GetExtensionManagerServiceType(version);
+            var extensionManagerServiceType = GetExtensionManagerServiceType(installedVersion.VsVersion);
             var extensionManager = (IVsExtensionManager)extensionManagerServiceType
                 .GetConstructors()
                 .Where(x => x.GetParameters().Length == 1 && x.GetParameters()[0].ParameterType.Name.Contains("SettingsManager"))

@@ -1,5 +1,8 @@
-﻿namespace VsixUtil
+﻿using System;
+
+namespace VsixUtil
 {
+    [Serializable]
     public class InstalledVersion
     {
         public string ApplicationPath { get; }
@@ -11,6 +14,11 @@
             ApplicationPath = applicationPath;
             VsVersion = vsVersion;
             Product = product;
+        }
+
+        public override string ToString()
+        {
+            return $"{ApplicationPath} ({VsVersion} {Product})";
         }
     }
 }

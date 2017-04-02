@@ -8,19 +8,19 @@ namespace VsixUtil
     public class ApplicationContext : IDisposable
     {
         AppDomain appDomain;
-        public ApplicationContext(string appPath, VsVersion version)
+        public ApplicationContext(InstalledVersion installedVersion)
         {
             AppDomainSetup appDomainSetup = new AppDomainSetup();
-            if (version != VsVersion.Vs2010)
+            if (installedVersion.VsVersion != VsVersion.Vs2010)
             {
                 var configFile = Path.GetTempFileName();
-                File.WriteAllText(configFile, GenerateConfigFileContents(version));
+                File.WriteAllText(configFile, GenerateConfigFileContents(installedVersion.VsVersion));
                 appDomainSetup.ConfigurationFile = configFile;
             }
 
             appDomainSetup.ApplicationBase = Path.GetDirectoryName(GetType().Assembly.Location);
-            appDomain = AppDomain.CreateDomain(version.ToString(), securityInfo: null, info: appDomainSetup);
-            InitProbingPathResolver(appDomain, appPath);
+            appDomain = AppDomain.CreateDomain(installedVersion.ToString(), securityInfo: null, info: appDomainSetup);
+            InitProbingPathResolver(appDomain, installedVersion.ApplicationPath);
         }
 
         public T CreateInstance<T>()

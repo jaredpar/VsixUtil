@@ -10,13 +10,11 @@ namespace VsixUtil.Tests
         [TestCaseSource(nameof(GetInstalledVersions))]
         public void GetInstalledVersions_CheckExtensionManagerWasCreated(InstalledVersion installedVersion)
         {
-            var applicationPath = installedVersion.ApplicationPath;
-            var vsVersion = installedVersion.VsVersion;
-            using (var applicationContext = new ApplicationContext(applicationPath, vsVersion))
+            using (var applicationContext = new ApplicationContext(installedVersion))
             {
                 var remote = applicationContext.CreateInstance<Remote>();
 
-                var exists = remote.WasCreated(applicationPath, vsVersion);
+                var exists = remote.WasCreated(installedVersion);
 
                 Assert.That(exists, Is.True);
             }
@@ -26,9 +24,9 @@ namespace VsixUtil.Tests
 
         class Remote : MarshalByRefObject
         {
-            public bool WasCreated(string applicationPath, VsVersion version)
+            public bool WasCreated(InstalledVersion installedVersion)
             {
-                var extensionManager = ExtensionManagerFactory.CreateExtensionManager(applicationPath, version, "");
+                var extensionManager = ExtensionManagerFactory.CreateExtensionManager(installedVersion, "");
                 return extensionManager != null;
             }
         }
