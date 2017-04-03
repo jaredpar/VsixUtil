@@ -152,9 +152,13 @@ namespace VsixUtil
 
         internal static void PrintHelp(IConsoleContext consoleContext)
         {
-            consoleContext.WriteLine("vsixutil [/install] extensionPath [/version number] [/rootSuffix name]");
-            consoleContext.WriteLine("vsixutil /uninstall identifier [/version number] [/rootSuffix name]");
+            consoleContext.WriteLine("vsixutil [/install] extensionPath [/rootSuffix name]");
+            consoleContext.WriteLine("vsixutil /uninstall identifier [/rootSuffix name]");
             consoleContext.WriteLine("vsixutil /list [filter]");
+            consoleContext.WriteLine("");
+            consoleContext.WriteLine("The following filters can be used with all commands:");
+            consoleContext.WriteLine("   /version 15 | 2017");
+            consoleContext.WriteLine("   /product com | Community");
         }
     }
 }

@@ -6,7 +6,11 @@ namespace VsixUtil
     {
         public static VsVersion ToVsVersion(string version)
         {
-            var versionNumber = int.Parse(version);
+            if(!int.TryParse(version, out int versionNumber))
+            {
+                throw new Exception("Bad Version");
+            }
+
             return GetVsVersion(versionNumber);
         }
 
@@ -39,14 +43,19 @@ namespace VsixUtil
             switch (versionNumber)
             {
                 case 10:
+                case 2010:
                     return VsVersion.Vs2010;
                 case 11:
+                case 2012:
                     return VsVersion.Vs2012;
                 case 12:
+                case 2013:
                     return VsVersion.Vs2013;
                 case 14:
+                case 2015:
                     return VsVersion.Vs2015;
                 case 15:
+                case 2017:
                     return VsVersion.Vs2017;
                 default:
                     throw new Exception("Bad Version");

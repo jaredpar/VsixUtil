@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System;
+using NUnit.Framework;
 
 namespace VsixUtil.Tests
 {
@@ -58,8 +59,17 @@ namespace VsixUtil.Tests
                 Assert.That(commandLine.ToolAction, Is.EqualTo(toolAction));
             }
 
-            [TestCase("/v", "10", VsVersion.Vs2010)]
             [TestCase("/version", "10", VsVersion.Vs2010)]
+            [TestCase("/version", "2010", VsVersion.Vs2010)]
+            [TestCase("/version", "11", VsVersion.Vs2012)]
+            [TestCase("/version", "2012", VsVersion.Vs2012)]
+            [TestCase("/version", "12", VsVersion.Vs2013)]
+            [TestCase("/version", "2013", VsVersion.Vs2013)]
+            [TestCase("/version", "14", VsVersion.Vs2015)]
+            [TestCase("/version", "2015", VsVersion.Vs2015)]
+            [TestCase("/version", "15", VsVersion.Vs2017)]
+            [TestCase("/version", "2017", VsVersion.Vs2017)]
+            [TestCase("/v", "10", VsVersion.Vs2010)]
             public void Version(string option, string version, VsVersion vsVersion)
             {
                 var consoleContext = new TestConsoleContext();
@@ -67,6 +77,17 @@ namespace VsixUtil.Tests
                 var commandLine = Program.ParseCommandLine(consoleContext, option, version);
 
                 Assert.That(commandLine.VsVersion, Is.EqualTo(vsVersion));
+            }
+
+            [TestCase("/version", "9", "Bad Version")]
+            [TestCase("/version", "foo", "Bad Version")]
+            public void Version_ExpectException(string option, string version, string exceptionMessage)
+            {
+                var consoleContext = new TestConsoleContext();
+
+                var exception = Assert.Throws<Exception>(() => Program.ParseCommandLine(consoleContext, option, version));
+
+                Assert.That(exception.Message, Is.EqualTo(exceptionMessage));
             }
 
             [TestCase("/r", "Exp")]
