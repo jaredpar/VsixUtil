@@ -1,481 +1,11 @@
-﻿using Microsoft.VisualStudio.ExtensionManager;
-using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+﻿using System;
 using System.Linq;
-using System.Reflection;
-using System.Text.RegularExpressions;
 
 namespace VsixUtil
 {
-    internal enum ToolAction
+    public static class Program
     {
-        Install,
-        Uninstall,
-        List,
-        Help
-    }
-
-    internal struct CommandLine
-    {
-        internal static readonly CommandLine Help = new CommandLine(ToolAction.Help, null, null, "", "");
-
-        internal readonly ToolAction ToolAction;
-        internal readonly string RootSuffix;
-        internal readonly string Version;
-        internal readonly string[] Skus;
-        internal readonly string Arg;
-
-        internal CommandLine(ToolAction toolAction, string version, string[] skus, string rootSuffix, string arg)
-        {
-            ToolAction = toolAction;
-            Version = version;
-            Skus = skus;
-            RootSuffix = rootSuffix;
-            Arg = arg;
-        }
-    }
-
-    internal enum Version
-    {
-        Vs2010,
-        Vs2012,
-        Vs2013,
-        Vs2015,
-        Vs2017
-    }
-
-    internal class InstalledVersion
-    {
-        internal InstalledVersion(string applicationPath, Version version)
-        {
-            ApplicationPath = applicationPath;
-            Version = version;
-        }
-
-        public Version Version
-        {
-            get;
-        }
-
-        public string ApplicationPath
-        {
-            get;
-        }
-
-    }
-
-    internal static class CommonUtil
-    {
-        internal static string GetVersionNumber(Version version)
-        {
-            switch (version)
-            {
-                case Version.Vs2010:
-                    return "10";
-                case Version.Vs2012:
-                    return "11";
-                case Version.Vs2013:
-                    return "12";
-                case Version.Vs2015:
-                    return "14";
-                case Version.Vs2017:
-                    return "15";
-                default:
-                    throw new Exception("Bad Version");
-            }
-        }
-
-        internal static string GetAssemblyVersionNumber(Version version)
-        {
-            return string.Format("{0}.0.0.0", GetVersionNumber(version));
-        }
-
-        internal static string GetApplicationPath(Version version, string sku = null)
-        {
-            switch (version)
-            {
-                case Version.Vs2017:
-                    return GetApplicationPathFromDirectory("2017", sku);
-                default:
-                    return GetApplicationPathFromRegistry(version);
-            }
-        }
-
-        private static string GetApplicationPathFromRegistry(Version version)
-        {
-            var path = string.Format("SOFTWARE\\Microsoft\\VisualStudio\\{0}.0\\Setup\\VS", CommonUtil.GetVersionNumber(version));
-            using (var registryKey = Registry.LocalMachine.OpenSubKey(path))
-            {
-                if (registryKey == null)
-                {
-                    return null;
-                }
-
-                return (string)(registryKey.GetValue("EnvironmentPath"));
-            }
-        }
-
-        // NOTE: Assumes VS2017 has been installed at default location.
-        static string GetApplicationPathFromDirectory(string version, string sku)
-        {
-            if(sku == null)
-            {
-                return null;
-            }
-
-            var searchPaths = new []
-            {
-                $"%ProgramFiles(x86)%\\Microsoft Visual Studio\\{version}\\{sku}\\Common7\\IDE\\devenv.exe",
-                $"%ProgramFiles(x86)%\\Microsoft Visual Studio\\{sku}\\Common7\\IDE\\devenv.exe"
-            };
-
-            foreach(var path in searchPaths)
-            {
-                var expandedPath = Environment.ExpandEnvironmentVariables(path);
-                if (File.Exists(expandedPath))
-                {
-                    return expandedPath;
-                }
-            }
-
-            return null;
-        }
-
-        internal static IEnumerable<InstalledVersion> GetInstalledVersions(CommandLine commandLine)
-        {
-            foreach(Version version in Enum.GetValues(typeof(Version)))
-            {
-                if (!IncludeVersion(commandLine.Version, version))
-                {
-                    continue;
-                }
-
-                string appPath;
-                switch(version)
-                {
-                    case Version.Vs2017:
-                        foreach (var sku in commandLine.Skus)
-                        {
-                            appPath = GetApplicationPath(version, sku);
-                            if(appPath != null && File.Exists(appPath))
-                            {
-                                yield return new InstalledVersion(appPath, version);
-                            }
-                        }
-                        break;
-                    default:
-                        appPath = GetApplicationPath(version);
-                        if (appPath != null && File.Exists(appPath))
-                        {
-                            yield return new InstalledVersion(appPath, version);
-                        }
-                        break;
-                }
-            }
-        }
-
-        static bool IncludeVersion(string number, Version version)
-        {
-            if (string.IsNullOrEmpty(number))
-            {
-                return true;
-            }
-
-            var versionNumber = GetVersionNumber(version);
-            return number == versionNumber;
-        }
-
-        internal static void PrintHelp()
-        {
-            Console.WriteLine("vsixutil [/install] extensionPath [/version number] [/sku name] [/rootSuffix name]");
-            Console.WriteLine("vsixutil /uninstall identifier [/version number] [/sku name] [/rootSuffix name]");
-            Console.WriteLine("vsixutil /list [filter]");
-        }
-    }
-
-    internal sealed class CommandRunner
-    {
-        internal readonly string _appPath;
-        internal readonly Version _version;
-        internal readonly string _rootSuffix;
-        internal readonly IVsExtensionManager _extensionManager;
-
-        internal CommandRunner(string appPath, Version version, string rootSuffix, IVsExtensionManager extensionManager)
-        {
-            _appPath = appPath;
-            _version = version;
-            _rootSuffix = rootSuffix;
-            _extensionManager = extensionManager;
-        }
-
-        internal void Run(ToolAction toolAction, string arg)
-        {
-            switch (toolAction)
-            {
-                case ToolAction.Install:
-                    RunInstall(arg);
-                    break;
-                case ToolAction.Uninstall:
-                    RunUninstall(arg);
-                    break;
-                case ToolAction.List:
-                    RunList(arg);
-                    break;
-                case ToolAction.Help:
-                    CommonUtil.PrintHelp();
-                    break;
-                default:
-                    throw new Exception(string.Format("Not implemented {0}", toolAction));
-            }
-        }
-
-        private void RunInstall(string extensionPath)
-        {
-            try
-            {
-                Console.Write("{0} Install ... ", _version);
-                var installableExtension = _extensionManager.CreateInstallableExtension(extensionPath);
-                var identifier = installableExtension.Header.Identifier;
-                UninstallSilent(identifier);
-
-                var perMachine = false;
-                var header = installableExtension.Header;
-                if (header.AllUsers != perMachine)
-                {
-                    if (SetAllUsers(header, perMachine))
-                    {
-                        Console.Write(string.Format("NOTE: Changing `AllUsers` to {0} ... ", perMachine));
-                    }
-                    else
-                    {
-                        Console.Write(string.Format("WARNING: Couldn't change `AllUsers` to {0} ... ", perMachine));
-                    }
-                }
-
-                _extensionManager.Install(installableExtension, perMachine);
-
-                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
-                _extensionManager.Enable(installedExtension);
-                Console.WriteLine("Succeeded");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("ERROR: {0}", ex.Message);
-            }
-        }
-
-        private static bool SetAllUsers(IExtensionHeader header, bool allUsers)
-        {
-            var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-            var allUsersProperty = header.GetType().GetProperty("AllUsers", flags);
-            if (allUsersProperty == null || !allUsersProperty.CanWrite)
-            {
-                return false;
-            }
-
-            allUsersProperty.SetValue(header, allUsers, null);
-            return true;
-        }
-
-        private void RunUninstall(string identifier)
-        {
-            try
-            {
-                Console.Write("{0} Uninstall ... ", _version);
-                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
-                if (installedExtension != null)
-                {
-                    _extensionManager.Uninstall(installedExtension);
-                }
-
-                Console.WriteLine("Succeeded");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("ERROR: {0}", ex.Message);
-            }
-        }
-
-        private void UninstallSilent(string identifier, bool printError = false)
-        {
-            try
-            {
-                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
-                if (installedExtension != null)
-                {
-                    _extensionManager.Uninstall(installedExtension);
-                }
-            }
-            catch
-            {
-
-            }
-        }
-
-        private void RunList(string filter)
-        {
-            Console.WriteLine();
-            Console.WriteLine($"{_appPath} ({_version})");
-            Console.WriteLine("  {0, -40} - {1}", "Name", "Identifier");
-
-            var regex = filter != null
-                ? new Regex(filter, RegexOptions.IgnoreCase)
-                : null;
-
-            foreach (var extension in _extensionManager.GetInstalledExtensions())
-            {
-                var header = extension.Header;
-                if (regex == null || regex.IsMatch(header.Name))
-                {
-                    var formattedName = header.Name.Replace(Environment.NewLine, " ");
-                    if (formattedName.Length > 35)
-                    {
-                        formattedName = formattedName.Substring(0, 35) + " ...";
-                    }
-                    Console.WriteLine("  {0,-40} - {1}", formattedName, header.Identifier);
-                }
-            }
-        }
-    }
-
-    internal interface IVersionManager
-    {
-        void Run(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg);
-    }
-
-    internal sealed class VersionManager : MarshalByRefObject, IVersionManager
-    {
-        public VersionManager()
-        {
-        }
-
-        public void Run(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg1)
-        {
-            var appDir = Path.GetDirectoryName(appPath);
-            var probingPaths = ".;PrivateAssemblies;PublicAssemblies";
-            using (new ProbingPathResolver(appDir, probingPaths.Split(';')))
-            {
-                PrivateRun(appPath, version, rootSuffix, toolAction, arg1);
-            }
-        }
-
-        private static void PrivateRun(string appPath, Version version, string rootSuffix, ToolAction toolAction, string arg1)
-        {
-            var obj = CreateExtensionManager(appPath, version, rootSuffix);
-            var commandRunner = new CommandRunner(appPath, version, rootSuffix, (IVsExtensionManager)obj);
-            commandRunner.Run(toolAction, arg1);
-        }
-
-        private static Assembly LoadImplementationAssembly(Version version)
-        {
-            var format = "Microsoft.VisualStudio.ExtensionManager.Implementation, Version={0}.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a";
-            var strongName = string.Format(format, CommonUtil.GetVersionNumber(version));
-            return Assembly.Load(strongName);
-        }
-
-        private static Assembly LoadSettingsAssembly(Version version)
-        {
-            var format = "Microsoft.VisualStudio.Settings{0}, Version={1}.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a";
-            string suffix = "";
-            switch (version)
-            {
-                case Version.Vs2010:
-                    suffix = "";
-                    break;
-                case Version.Vs2012:
-                    suffix = ".11.0";
-                    break;
-                case Version.Vs2013:
-                    suffix = ".12.0";
-                    break;
-                case Version.Vs2015:
-                    suffix = ".14.0";
-                    break;
-                case Version.Vs2017:
-                    suffix = ".15.0";
-                    break;
-                default:
-                    throw new Exception("Bad Version");
-            }
-
-            var strongName = string.Format(format, suffix, CommonUtil.GetVersionNumber(version));
-            return Assembly.Load(strongName);
-        }
-
-        private static Type GetExtensionManagerServiceType(Version version)
-        {
-            var assembly = LoadImplementationAssembly(version);
-            return assembly.GetType("Microsoft.VisualStudio.ExtensionManager.ExtensionManagerService");
-        }
-
-        internal static object CreateExtensionManager(string applicationPath, Version version, string rootSuffix)
-        {
-            var settingsAssembly = LoadSettingsAssembly(version);
-
-            var externalSettingsManagerType = settingsAssembly.GetType("Microsoft.VisualStudio.Settings.ExternalSettingsManager");
-            var settingsManager = externalSettingsManagerType
-                .GetMethods()
-                .Where(x => x.Name == "CreateForApplication")
-                .Where(x =>
-                {
-                    var parameters = x.GetParameters();
-                    return
-                        parameters.Length == 2 &&
-                        parameters[0].ParameterType == typeof(string) &&
-                        parameters[1].ParameterType == typeof(string);
-                })
-                .FirstOrDefault()
-                .Invoke(null, new[] { applicationPath, rootSuffix });
-
-            var extensionManagerServiceType = GetExtensionManagerServiceType(version);
-            var obj = extensionManagerServiceType
-                .GetConstructors()
-                .Where(x => x.GetParameters().Length == 1 && x.GetParameters()[0].ParameterType.Name.Contains("SettingsManager"))
-                .FirstOrDefault()
-                .Invoke(new[] { settingsManager });
-            return obj;
-        }
-    }
-
-    internal class ProbingPathResolver : IDisposable
-    {
-        private readonly string Dir;
-        private readonly string[] ProbePaths;
-
-        internal ProbingPathResolver(string dir, string[] probePaths)
-        {
-            Dir = dir;
-            ProbePaths = probePaths;
-            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
-        }
-
-        public void Dispose()
-        {
-            AppDomain.CurrentDomain.AssemblyResolve -= CurrentDomain_AssemblyResolve;
-        }
-
-        private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
-        {
-            var assemblyName = new AssemblyName(args.Name);
-            foreach (var probePath in ProbePaths)
-            {
-                var path = Path.Combine(Dir, probePath, assemblyName.Name + ".dll");
-                if (File.Exists(path))
-                {
-                    return Assembly.LoadFrom(path);
-                }
-            }
-
-            return null;
-        }
-    }
-
-    internal class Program
-    {
-        private static CommandLine ParseCommandLine(string[] args)
+        public static CommandLine ParseCommandLine(IConsoleContext consoleContext, params string[] args)
         {
             if (args.Length == 0)
             {
@@ -483,8 +13,8 @@ namespace VsixUtil
             }
 
             var toolAction = ToolAction.Help;
-            var version = "";
-            var sku = "Community;Professional;Enterprise";
+            VsVersion? version = null;
+            string product = null;
             var rootSuffix = "";
             var arg = "";
 
@@ -497,7 +27,7 @@ namespace VsixUtil
                     case "/install":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/install requires an argument");
+                            consoleContext.Write("/install requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -509,7 +39,7 @@ namespace VsixUtil
                     case "/uninstall":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/uninstall requires an argument");
+                            consoleContext.Write("/uninstall requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -521,29 +51,29 @@ namespace VsixUtil
                     case "/version":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/version requires an argument");
+                            consoleContext.Write("/version requires an argument");
                             return CommandLine.Help;
                         }
 
-                        version = args[index + 1];
+                        version = VsVersionUtil.ToVsVersion(args[index + 1]);
                         index += 2;
                         break;
-                    case "/s":
-                    case "/sku":
+                    case "/p":
+                    case "/product":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/sku requires an argument");
+                            consoleContext.Write("/product requires an argument");
                             return CommandLine.Help;
                         }
 
-                        sku = args[index + 1];
+                        product = args[index + 1];
                         index += 2;
                         break;
                     case "/r":
                     case "/rootsuffix":
                         if (index + 1 >= args.Length)
                         {
-                            Console.Write("/rootSuffix requires an argument");
+                            consoleContext.Write("/rootSuffix requires an argument");
                             return CommandLine.Help;
                         }
 
@@ -566,84 +96,69 @@ namespace VsixUtil
                         break;
                     default:
                         arg = args[index];
-                        if (!File.Exists(arg))
+                        if(!arg.StartsWith("/") && args.Length == 1)
                         {
-                            Console.WriteLine("{0} is not a valid argument", arg);
-                            return CommandLine.Help;
+                            // Default to Install if there's a single argument.
+                            toolAction = ToolAction.Install;
+                            index += 1;
+                            break;
                         }
 
-                        // Default to Install if `arg` file exists.
-                        toolAction = ToolAction.Install;
-                        index += 1;
-                        break;
+                        consoleContext.WriteLine("{0} is not a valid argument", arg);
+                        return CommandLine.Help;
                 }
             }
 
-            var skus = sku.Split(';');
-            return new CommandLine(toolAction, version, skus, rootSuffix, arg);
-        }
-
-        private static string GenerateConfigFileContents(Version version)
-        {
-            Debug.Assert(version != Version.Vs2010);
-            const string contentFormat = @"
-<configuration>
-  <runtime>
-    <assemblyBinding xmlns=""urn:schemas-microsoft-com:asm.v1"">
-      <dependentAssembly>
-        <assemblyIdentity name=""Microsoft.VisualStudio.ExtensionManager"" publicKeyToken=""b03f5f7f11d50a3a"" culture=""neutral"" />
-        <bindingRedirect oldVersion=""10.0.0.0-{0}"" newVersion=""{0}"" />
-      </dependentAssembly>
-    </assemblyBinding>
-  </runtime>
-</configuration>
-";
-            return string.Format(contentFormat, CommonUtil.GetAssemblyVersionNumber(version));
-        }
-
-        private static void Run(string appPath, Version version, CommandLine commandLine)
-        {
-            AppDomainSetup appDomainSetup = null;
-            if (version != Version.Vs2010)
-            {
-                var configFile = Path.GetTempFileName();
-                File.WriteAllText(configFile, GenerateConfigFileContents(version));
-                appDomainSetup = new AppDomainSetup();
-                appDomainSetup.ConfigurationFile = configFile;
-            }
-            var appDomain = AppDomain.CreateDomain(version.ToString(), securityInfo: null, info: appDomainSetup);
-            try
-            {
-                var versionManager = (IVersionManager)appDomain.CreateInstanceFromAndUnwrap(
-                    typeof(Program).Assembly.Location,
-                    typeof(VersionManager).FullName);
-                versionManager.Run(appPath, version, commandLine.RootSuffix, commandLine.ToolAction, commandLine.Arg);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error: {0}", ex.Message);
-            }
-            finally
-            {
-                AppDomain.Unload(appDomain);
-            }
+            return new CommandLine(toolAction, version, product, rootSuffix, arg);
         }
 
         internal static void Main(string[] args)
         {
-            var commandLine = ParseCommandLine(args);
+            var consoleContext = new ConsoleContext(Console.Out);
+            var commandLine = ParseCommandLine(consoleContext, args);
             if (commandLine.ToolAction == ToolAction.Help)
             {
-                CommonUtil.PrintHelp();
+                PrintHelp(consoleContext);
                 Environment.Exit(1);
                 return;
             }
 
-            var installedVersions = CommonUtil.GetInstalledVersions(commandLine);
-            foreach(var installedVersion in installedVersions)
+            var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
+            foreach (var installedVersion in installedVersions)
             {
-                Run(installedVersion.ApplicationPath, installedVersion.Version, commandLine);
+                using (var applicationContext = new ApplicationContext(installedVersion))
+                {
+                    var factory = applicationContext.CreateInstance<CommandRunnerFactory>();
+                    var commandRunner = factory.Create(consoleContext, installedVersion, commandLine.RootSuffix);
+                    commandRunner.Run(commandLine.ToolAction, commandLine.Arg);
+                }
             }
+        }
+
+        public static bool Filter(InstalledVersion installedVersion, CommandLine commandLine)
+        {
+            return FilterVsVersion(installedVersion, commandLine.VsVersion) && FilterProduct(installedVersion, commandLine.Product);
+        }
+
+        static bool FilterVsVersion(InstalledVersion installedVersion, VsVersion? vsVersion)
+        {
+            return vsVersion?.Equals(installedVersion.VsVersion) ?? true;
+        }
+
+        static bool FilterProduct(InstalledVersion installedVersion, string product)
+        {
+            return product == null || (installedVersion.Product?.StartsWith(product, StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+
+        internal static void PrintHelp(IConsoleContext consoleContext)
+        {
+            consoleContext.WriteLine("vsixutil [/install] extensionPath [/rootSuffix name]");
+            consoleContext.WriteLine("vsixutil /uninstall identifier [/rootSuffix name]");
+            consoleContext.WriteLine("vsixutil /list [filter]");
+            consoleContext.WriteLine("");
+            consoleContext.WriteLine("The following filters can be used with all commands:");
+            consoleContext.WriteLine("   /version 15 | 2017");
+            consoleContext.WriteLine("   /product com | Community");
         }
     }
 }

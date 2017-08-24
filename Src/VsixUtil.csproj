@@ -39,13 +39,32 @@
       <HintPath>..\References\Microsoft.VisualStudio.ExtensionManager.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Microsoft.VisualStudio.Setup.Configuration.Interop, Version=1.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.VisualStudio.Setup.Configuration.Interop.1.8.24\lib\net35\Microsoft.VisualStudio.Setup.Configuration.Interop.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommandLine.cs" />
+    <Compile Include="CommandRunner.cs" />
+    <Compile Include="IConsoleContext.cs" />
+    <Compile Include="InstalledVersion.cs" />
+    <Compile Include="InstalledVersionUtilities.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="ConsoleContext.cs" />
+    <Compile Include="CommandRunnerFactory.cs" />
+    <Compile Include="ToolAction.cs" />
+    <Compile Include="VsVersion.cs" />
+    <Compile Include="ExtensionManagerFactory.cs" />
+    <Compile Include="ApplicationContext.cs" />
+    <Compile Include="VsVersionUtil.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
