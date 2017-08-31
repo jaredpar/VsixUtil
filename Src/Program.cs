@@ -126,7 +126,8 @@ namespace VsixUtil
             var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
             foreach (var installedVersion in installedVersions)
             {
-                using (var applicationContext = new ApplicationContext(installedVersion))
+                var unloadAppDomainOnDispose = false; // Fix for: https://github.com/jaredpar/VsixUtil/issues/7
+                using (var applicationContext = new ApplicationContext(installedVersion, unloadAppDomainOnDispose))
                 {
                     var factory = applicationContext.CreateInstance<CommandRunnerFactory>();
                     var commandRunner = factory.Create(consoleContext, installedVersion, commandLine.RootSuffix);

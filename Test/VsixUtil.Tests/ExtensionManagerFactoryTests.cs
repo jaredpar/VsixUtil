@@ -10,7 +10,7 @@ namespace VsixUtil.Tests
         [TestCaseSource(nameof(GetInstalledVersions))]
         public void GetInstalledVersions_CheckExtensionManagerWasCreated(InstalledVersion installedVersion)
         {
-            using (var applicationContext = new ApplicationContext(installedVersion))
+            using (var applicationContext = new ApplicationContext(installedVersion, true))
             {
                 var remote = applicationContext.CreateInstance<Remote>();
 

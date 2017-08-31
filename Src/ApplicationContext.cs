@@ -8,9 +8,11 @@ namespace VsixUtil
     public class ApplicationContext : IDisposable
     {
         AppDomain appDomain;
-        public ApplicationContext(InstalledVersion installedVersion)
+        bool unloadAppDomainOnDispose;
+
+        public ApplicationContext(InstalledVersion installedVersion, bool unloadAppDomainOnDispose)
         {
-            AppDomainSetup appDomainSetup = new AppDomainSetup();
+            var appDomainSetup = new AppDomainSetup();
             if (installedVersion.VsVersion != VsVersion.Vs2010)
             {
                 var configFile = Path.GetTempFileName();
@@ -30,7 +32,10 @@ namespace VsixUtil
 
         public void Dispose()
         {
-            AppDomain.Unload(appDomain);
+            if (unloadAppDomainOnDispose)
+            {
+                AppDomain.Unload(appDomain);
+            }
         }
 
         static void InitProbingPathResolver(AppDomain appDomain, string appPath)

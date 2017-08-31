@@ -10,7 +10,7 @@ namespace VsixUtil.Tests
         [TestCaseSource(nameof(GetInstalledVersions))]
         public void ExtensionManagerAssembly_HasExpectedVersion(InstalledVersion installedVersion)
         {
-            using (var applicationContext = new ApplicationContext(installedVersion))
+            using (var applicationContext = new ApplicationContext(installedVersion, true))
             {
                 var remote = applicationContext.CreateInstance<Remote>();
 
@@ -24,7 +24,7 @@ namespace VsixUtil.Tests
         [TestCaseSource(nameof(GetInstalledVersions))]
         public void ExtensionManagerImplementationAssembly_HasExpectedVersion(InstalledVersion installedVersion)
         {
-            using (var applicationContext = new ApplicationContext(installedVersion))
+            using (var applicationContext = new ApplicationContext(installedVersion, true))
             {
                 var remote = applicationContext.CreateInstance<Remote>();
 
