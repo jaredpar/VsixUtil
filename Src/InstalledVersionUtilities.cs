@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using Microsoft.Win32;
 using Microsoft.VisualStudio.Setup.Configuration;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace VsixUtil
 {
     public class InstalledVersionUtilities
     {
         readonly static VsVersion[] LegacyVersions = { VsVersion.Vs2010, VsVersion.Vs2012, VsVersion.Vs2013, VsVersion.Vs2015 };
+        const uint REGDB_E_CLASSNOTREG = 0x80040154;
 
         public static IEnumerable<InstalledVersion> GetInstalledVersions()
         {
@@ -40,7 +42,25 @@ namespace VsixUtil
 
         public static IEnumerable<ISetupInstance2> GetSetupInstances()
         {
-            var setupConfiguration = new SetupConfiguration();
+            SetupConfiguration setupConfiguration;
+            try
+            {
+                setupConfiguration = new SetupConfiguration();
+            }
+            catch (COMException e)
+            {
+                unchecked
+                {
+                    // Return no insances when VS2017 isn't installed.
+                    if (e.ErrorCode == (int)REGDB_E_CLASSNOTREG)
+                    {
+                        yield break;
+                    }
+                }
+
+                throw;
+            }
+
             var instanceEnumerator = setupConfiguration.EnumAllInstances();
             var instances = new ISetupInstance2[3];
 
