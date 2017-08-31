@@ -6,7 +6,8 @@ namespace VsixUtil
     {
         public static VsVersion ToVsVersion(string version)
         {
-            if(!int.TryParse(version, out int versionNumber))
+            int versionNumber;
+            if (!int.TryParse(version, out versionNumber))
             {
                 throw new Exception("Bad Version");
             }

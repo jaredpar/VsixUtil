@@ -46,7 +46,8 @@ namespace VsixUtil
 
             while (true)
             {
-                instanceEnumerator.Next(instances.Length, instances, out int instancesFetched);
+                int instancesFetched;
+                instanceEnumerator.Next(instances.Length, instances, out instancesFetched);
                 if (instancesFetched == 0)
                 {
                     break;
