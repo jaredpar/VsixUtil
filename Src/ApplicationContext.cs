@@ -12,6 +12,8 @@ namespace VsixUtil
 
         public ApplicationContext(InstalledVersion installedVersion, bool unloadAppDomainOnDispose)
         {
+            this.unloadAppDomainOnDispose = unloadAppDomainOnDispose;
+
             var appDomainSetup = new AppDomainSetup();
             if (installedVersion.VsVersion != VsVersion.Vs2010)
             {

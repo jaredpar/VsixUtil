@@ -17,6 +17,7 @@ namespace VsixUtil
             string product = null;
             var rootSuffix = "";
             var arg = "";
+            var unloadAppDomainOnDispose = true;
 
             int index = 0;
             while (index < args.Length)
@@ -94,9 +95,14 @@ namespace VsixUtil
                         toolAction = ToolAction.Help;
                         index = args.Length;
                         break;
+                    case "/skip_unload":
+                        consoleContext.Write("unloadAppDomainOnDispose = false");
+                        unloadAppDomainOnDispose = false;
+                        index += 1;
+                        break;
                     default:
                         arg = args[index];
-                        if(!arg.StartsWith("/") && args.Length == 1)
+                        if (!arg.StartsWith("/") && args.Length == 1)
                         {
                             // Default to Install if there's a single argument.
                             toolAction = ToolAction.Install;
@@ -109,7 +115,8 @@ namespace VsixUtil
                 }
             }
 
-            return new CommandLine(toolAction, version, product, rootSuffix, arg);
+            return new CommandLine(toolAction, version, product, rootSuffix, arg,
+                unloadAppDomainOnDispose: unloadAppDomainOnDispose);
         }
 
         internal static void Main(string[] args)
@@ -126,8 +133,7 @@ namespace VsixUtil
             var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
             foreach (var installedVersion in installedVersions)
             {
-                var unloadAppDomainOnDispose = false; // Fix for: https://github.com/jaredpar/VsixUtil/issues/7
-                using (var applicationContext = new ApplicationContext(installedVersion, unloadAppDomainOnDispose))
+                using (var applicationContext = new ApplicationContext(installedVersion, commandLine.UnloadAppDomainOnDispose))
                 {
                     var factory = applicationContext.CreateInstance<CommandRunnerFactory>();
                     var commandRunner = factory.Create(consoleContext, installedVersion, commandLine.RootSuffix);
