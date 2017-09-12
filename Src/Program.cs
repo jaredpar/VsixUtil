@@ -17,7 +17,6 @@ namespace VsixUtil
             string product = null;
             var rootSuffix = "";
             var arg = "";
-            var unloadAppDomainOnDispose = true;
 
             int index = 0;
             while (index < args.Length)
@@ -95,11 +94,6 @@ namespace VsixUtil
                         toolAction = ToolAction.Help;
                         index = args.Length;
                         break;
-                    case "/skip_unload":
-                        consoleContext.Write("unloadAppDomainOnDispose = false");
-                        unloadAppDomainOnDispose = false;
-                        index += 1;
-                        break;
                     default:
                         arg = args[index];
                         if (!arg.StartsWith("/") && args.Length == 1)
@@ -115,8 +109,7 @@ namespace VsixUtil
                 }
             }
 
-            return new CommandLine(toolAction, version, product, rootSuffix, arg,
-                unloadAppDomainOnDispose: unloadAppDomainOnDispose);
+            return new CommandLine(toolAction, version, product, rootSuffix, arg);
         }
 
         internal static void Main(string[] args)
@@ -133,7 +126,8 @@ namespace VsixUtil
             var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
             foreach (var installedVersion in installedVersions)
             {
-                using (var applicationContext = new ApplicationContext(installedVersion, commandLine.UnloadAppDomainOnDispose))
+                var createDomain = true;
+                using (var applicationContext = new ApplicationContext(installedVersion, createDomain))
                 {
                     var factory = applicationContext.CreateInstance<CommandRunnerFactory>();
                     var commandRunner = factory.Create(consoleContext, installedVersion, commandLine.RootSuffix);
