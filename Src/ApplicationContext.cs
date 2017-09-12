@@ -8,22 +8,30 @@ namespace VsixUtil
     public class ApplicationContext : IDisposable
     {
         AppDomain appDomain;
-        bool unloadAppDomainOnDispose;
+        bool createDomain;
 
-        public ApplicationContext(InstalledVersion installedVersion, bool unloadAppDomainOnDispose)
+        public ApplicationContext(InstalledVersion installedVersion, bool createDomain)
         {
-            this.unloadAppDomainOnDispose = unloadAppDomainOnDispose;
+            this.createDomain = createDomain;
 
-            var appDomainSetup = new AppDomainSetup();
-            if (installedVersion.VsVersion != VsVersion.Vs2010)
+            if (createDomain)
             {
-                var configFile = Path.GetTempFileName();
-                File.WriteAllText(configFile, GenerateConfigFileContents(installedVersion.VsVersion));
-                appDomainSetup.ConfigurationFile = configFile;
+                var appDomainSetup = new AppDomainSetup();
+                if (installedVersion.VsVersion != VsVersion.Vs2010)
+                {
+                    var configFile = Path.GetTempFileName();
+                    File.WriteAllText(configFile, GenerateConfigFileContents(installedVersion.VsVersion));
+                    appDomainSetup.ConfigurationFile = configFile;
+                }
+
+                appDomainSetup.ApplicationBase = Path.GetDirectoryName(GetType().Assembly.Location);
+                appDomain = AppDomain.CreateDomain(installedVersion.ToString(), securityInfo: null, info: appDomainSetup);
+            }
+            else
+            {
+                appDomain = AppDomain.CurrentDomain;
             }
 
-            appDomainSetup.ApplicationBase = Path.GetDirectoryName(GetType().Assembly.Location);
-            appDomain = AppDomain.CreateDomain(installedVersion.ToString(), securityInfo: null, info: appDomainSetup);
             InitProbingPathResolver(appDomain, installedVersion.ApplicationPath);
         }
 
@@ -34,7 +42,7 @@ namespace VsixUtil
 
         public void Dispose()
         {
-            if (unloadAppDomainOnDispose)
+            if (createDomain)
             {
                 AppDomain.Unload(appDomain);
             }
