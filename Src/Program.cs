@@ -127,6 +127,14 @@ namespace VsixUtil
             foreach (var installedVersion in installedVersions)
             {
                 var createDomain = true;
+
+                // HACK: Don't create an app domain when installing for VS 2017.
+                // https://github.com/jaredpar/VsixUtil/pull/8
+                if (commandLine.ToolAction == ToolAction.Install && installedVersion.VsVersion == VsVersion.Vs2017)
+                {
+                    createDomain = false;
+                }
+
                 using (var applicationContext = new ApplicationContext(installedVersion, createDomain))
                 {
                     var factory = applicationContext.CreateInstance<CommandRunnerFactory>();
