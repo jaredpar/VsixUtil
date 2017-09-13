@@ -1,6 +1,9 @@
 
 configuration: Debug
 
+before_build: 
+  - nuget restore VsixUtil.sln
+
 build:
   project: VsixUtil.sln
   verbosity: minimal
