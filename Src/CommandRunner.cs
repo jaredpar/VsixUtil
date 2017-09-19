@@ -99,13 +99,16 @@ namespace VsixUtil
             try
             {
                 Console.Write("{0} Uninstall ... ", _installedVersion);
-                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
-                if (installedExtension != null)
+                IInstalledExtension installedExtension;
+                if (_extensionManager.TryGetInstalledExtension(identifier, out installedExtension))
                 {
                     _extensionManager.Uninstall(installedExtension);
+                    Console.WriteLine("Succeeded");
                 }
-
-                Console.WriteLine("Succeeded");
+                else
+                {
+                    Console.WriteLine("Not Installed");
+                }
             }
             catch (Exception ex)
             {
@@ -117,8 +120,8 @@ namespace VsixUtil
         {
             try
             {
-                var installedExtension = _extensionManager.GetInstalledExtension(identifier);
-                if (installedExtension != null)
+                IInstalledExtension installedExtension;
+                if (_extensionManager.TryGetInstalledExtension(identifier, out installedExtension))
                 {
                     _extensionManager.Uninstall(installedExtension);
                 }
