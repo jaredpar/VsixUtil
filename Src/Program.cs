@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
+using System.Diagnostics;
 
 namespace VsixUtil
 {
@@ -16,6 +18,7 @@ namespace VsixUtil
             VsVersion? version = null;
             string product = null;
             var rootSuffix = "";
+            var defaultDomain = false;
             var arg = "";
 
             int index = 0;
@@ -80,6 +83,10 @@ namespace VsixUtil
                         rootSuffix = args[index + 1];
                         index += 2;
                         break;
+                    case "/defaultdomain":
+                        defaultDomain = true;
+                        index++;
+                        break;
                     case "/l":
                     case "/list":
                         toolAction = ToolAction.List;
@@ -109,7 +116,7 @@ namespace VsixUtil
                 }
             }
 
-            return new CommandLine(toolAction, version, product, rootSuffix, arg);
+            return new CommandLine(toolAction, version, product, rootSuffix, arg, defaultDomain: defaultDomain);
         }
 
         internal static void Main(string[] args)
@@ -126,13 +133,13 @@ namespace VsixUtil
             var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
             foreach (var installedVersion in installedVersions)
             {
-                var createDomain = true;
-
-                // HACK: Don't create an app domain when installing for VS 2017.
+                // HACK: We mustn't create an app domain when installing for VS2017.
                 // https://github.com/jaredpar/VsixUtil/pull/8
-                if (commandLine.ToolAction == ToolAction.Install && installedVersion.VsVersion == VsVersion.Vs2017)
+                var createDomain = !commandLine.DefaultDomain;
+                if (createDomain && installedVersion.VsVersion == VsVersion.Vs2017)
                 {
-                    createDomain = false;
+                    ExecuteOutOfProc(consoleContext, installedVersion.ApplicationPath, commandLine.ToolAction, commandLine.Arg);
+                    continue;
                 }
 
                 using (var applicationContext = new ApplicationContext(installedVersion, createDomain))
@@ -142,6 +149,17 @@ namespace VsixUtil
                     commandRunner.Run(commandLine.ToolAction, commandLine.Arg);
                 }
             }
+        }
+
+        private static void ExecuteOutOfProc(ConsoleContext consoleContext, string applicationPath, ToolAction toolAction, string arg)
+        {
+            var exeFile = Assembly.GetEntryAssembly().Location;
+            var arguments = "/defaultDomain /product \"" + applicationPath + "\" /" + toolAction + " \"" + arg + "\"";
+            var startInfo = new ProcessStartInfo(exeFile, arguments) { RedirectStandardOutput = true, CreateNoWindow = true, UseShellExecute = false };
+            var process = Process.Start(startInfo);
+            var output = process.StandardOutput.ReadToEnd();
+            consoleContext.Write(output);
+            process.WaitForExit();
         }
 
         public static bool Filter(InstalledVersion installedVersion, CommandLine commandLine)
