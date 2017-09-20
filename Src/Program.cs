@@ -156,7 +156,30 @@ namespace VsixUtil
 
         static bool FilterProduct(InstalledVersion installedVersion, string product)
         {
-            return product == null || (installedVersion.Product?.StartsWith(product, StringComparison.OrdinalIgnoreCase) ?? false);
+            if (product == null)
+            {
+                return true;
+            }
+
+            var installedProduct = installedVersion.Product;
+            if (installedProduct != null)
+            {
+                if (installedProduct.StartsWith(product, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            var installedApplicationPath = installedVersion.ApplicationPath;
+            if (installedApplicationPath != null)
+            {
+                if (installedApplicationPath.IndexOf(product, StringComparison.OrdinalIgnoreCase) != -1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         internal static void PrintHelp(IConsoleContext consoleContext)
@@ -167,7 +190,7 @@ namespace VsixUtil
             consoleContext.WriteLine("");
             consoleContext.WriteLine("The following filters can be used with all commands:");
             consoleContext.WriteLine("   /version 15 | 2017");
-            consoleContext.WriteLine("   /product com | Community");
+            consoleContext.WriteLine("   /product com | Community | preview");
         }
     }
 }

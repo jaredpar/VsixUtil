@@ -116,14 +116,21 @@ namespace VsixUtil.Tests
                     Assert.That(include, Is.EqualTo(expect));
                 }
 
-                [TestCase("Community", null, true)]
-                [TestCase("Community", "Community", true)]
-                [TestCase("Community", "community", true)]
-                [TestCase("Community", "com", true)]
-                [TestCase("Community", "Enterprise", false)]
-                public void FilterProduct(string product, string filterProduct, bool expect)
+                const string PreviewCommunityPath = @"C:\Program Files(x86)\Microsoft Visual Studio\Preview\Community\Common7\IDE\devenv.exe";
+
+                [TestCase(null, "Community", null, true)]
+                [TestCase(null, "Community", "Community", true)]
+                [TestCase(null, "Community", "community", true)]
+                [TestCase(null, "Community", "com", true)]
+                [TestCase(null, "Community", "Enterprise", false)]
+                [TestCase(PreviewCommunityPath, "Community", PreviewCommunityPath, true)]
+                [TestCase(PreviewCommunityPath, "Community", "Preview", true)]
+                [TestCase(PreviewCommunityPath, "Community", "prev", true)]
+                [TestCase(PreviewCommunityPath, "Community", "devenv", true)]
+                [TestCase(PreviewCommunityPath, "Community", "UNKNOWN", false)]
+                public void FilterProduct(string applicationPath, string product, string filterProduct, bool expect)
                 {
-                    var installedVersion = new InstalledVersion(null, VsVersion.Vs2010, product);
+                    var installedVersion = new InstalledVersion(applicationPath, VsVersion.Vs2010, product);
                     var commandLine = new CommandLine(product: filterProduct);
 
                     var include = Program.Filter(installedVersion, commandLine);
