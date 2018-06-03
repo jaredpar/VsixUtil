@@ -71,7 +71,7 @@ namespace VsixUtil
             var extensionManagerServiceType = GetExtensionManagerServiceType(installedVersion.VsVersion);
             var extensionManager = (IVsExtensionManager)extensionManagerServiceType
                 .GetConstructors()
-                .Where(x => x.GetParameters().Length == 1 && x.GetParameters()[0].ParameterType.Name.Contains("SettingsManager"))
+                .Where(x => x.GetParameters().Length == 1 && x.GetParameters()[0].ParameterType.IsAssignableFrom(settingsManager.GetType()))
                 .FirstOrDefault()
                 .Invoke(new[] { settingsManager });
             return extensionManager;
