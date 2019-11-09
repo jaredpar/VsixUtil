@@ -29,6 +29,8 @@ namespace VsixUtil
                     return 14;
                 case VsVersion.Vs2017:
                     return 15;
+                case VsVersion.Vs2019:
+                    return 16;
                 default:
                     throw new Exception("Bad Version");
             }
@@ -58,6 +60,9 @@ namespace VsixUtil
                 case 15:
                 case 2017:
                     return VsVersion.Vs2017;
+                case 16:
+                case 2019:
+                    return VsVersion.Vs2019;
                 default:
                     throw new Exception("Bad Version");
             }
