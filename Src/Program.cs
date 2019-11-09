@@ -133,6 +133,8 @@ namespace VsixUtil
             var installedVersions = InstalledVersionUtilities.GetInstalledVersions().Where(iv => Filter(iv, commandLine));
             foreach (var installedVersion in installedVersions)
             {
+                consoleContext.WriteLine($"Installing into {installedVersion.VsVersion} with root suffix: '{commandLine.RootSuffix}");
+
                 // HACK: We mustn't create an app domain when installing for VS2017.
                 // https://github.com/jaredpar/VsixUtil/pull/8
                 var createDomain = !commandLine.DefaultDomain;

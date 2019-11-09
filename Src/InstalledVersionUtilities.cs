@@ -34,6 +34,7 @@ namespace VsixUtil
                 var appPath = setupInstance.ResolvePath(productPath);
                 var installationVersion = setupInstance.GetInstallationVersion();
                 var version = new Version(installationVersion);
+
                 var vsVersion = VsVersionUtil.GetVsVersion(version);
                 var product = setupInstance.GetProduct().GetId().Split('.').Last();
                 yield return new InstalledVersion(appPath, vsVersion, product);
